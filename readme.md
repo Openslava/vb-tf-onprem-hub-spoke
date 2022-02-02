@@ -21,8 +21,9 @@ some os the user scenarios
 - spoke to hub 
 
 ```powershell
-    .\deploy.ps1
+    .\deploy.ps1 -prefix test01
 ```
 ## Modifications compare to original solution
 
 - on-prem to hub simulation with VNET pering instead of VPN gateway (reduce cost)
+  
