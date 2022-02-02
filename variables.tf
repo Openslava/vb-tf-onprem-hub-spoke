@@ -10,7 +10,7 @@ variable "username" {
 
 variable "password" {
     description = "Password for Virtual Machines"
-    default     = "viliamb"
+    default     = "password"
 }
 
 variable "vmsize" {

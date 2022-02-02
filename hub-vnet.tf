@@ -96,7 +96,7 @@ resource "azurerm_virtual_machine" "hub-vm" {
     }
 }
 
-/*
+
 # Virtual Network Gateway
 resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
     name                = "hub-vpn-gateway1-pip"
@@ -152,4 +152,3 @@ resource "azurerm_virtual_network_gateway_connection" "onprem-hub-conn" {
 
     shared_key = local.shared-key
 }
-*/
