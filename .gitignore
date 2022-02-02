@@ -12,6 +12,8 @@ github
 /
 gitignore
 
+.terraform.lock.hcl
+*.tfplan
 
 # Local .terraform directories
 **/.terraform/*

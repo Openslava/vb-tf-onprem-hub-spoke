@@ -9,7 +9,6 @@ some os the user scenarios
 - to learn and test any new services connected to VNET in Spoke or HUB (e.g. PaaS, private links, private end points)
 - others 
 
-
 ## Resources intended t obe created by this templates
 
 - VNET  - on-prem, hub, 2 x spoke
@@ -20,7 +19,14 @@ some os the user scenarios
 - on-prem to hub - peering to simulate VNET gateway 
 - spoke to hub 
 
+## quickstart 
+
 ```powershell
+    # login to azure and set the context to target subscription
+    az login  # or: az login --tenant  [tenant id]
+    az account set -s [subscription name]
+    az account show 
+
     .\deploy.ps1 -prefix test01
 ```
 ## Modifications compare to original solution
