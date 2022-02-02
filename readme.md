@@ -29,7 +29,3 @@ some os the user scenarios
 
     .\deploy.ps1 -prefix test01
 ```
-## Modifications compare to original solution
-
-- on-prem to hub simulation with VNET pering instead of VPN gateway (reduce cost)
-  
