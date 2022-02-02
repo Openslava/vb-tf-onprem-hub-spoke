@@ -1,116 +1,156 @@
 locals {
-    spoke2-location       = var.location
-    prefix-spoke2         = "spoke2"
-    spoke2-resource-group = "rg-${var.prefix}-${local.prefix-spoke2}-${var.environment}-${var.region}"
+  spoke2-location       = var.location
+  prefix-spoke2         = "spoke2"
+  spoke2-resource-group = "rg-${var.prefix}-${local.prefix-spoke2}-${var.environment}-${var.region}"
 }
 
 resource "azurerm_resource_group" "spoke2-vnet-rg" {
-    name     = local.spoke2-resource-group
-    location = local.spoke2-location
+  name     = local.spoke2-resource-group
+  location = local.spoke2-location
 }
 
 resource "azurerm_virtual_network" "spoke2-vnet" {
-    name                = "${local.prefix-spoke2}-vnet"
-    location            = azurerm_resource_group.spoke2-vnet-rg.location
-    resource_group_name = azurerm_resource_group.spoke2-vnet-rg.name
-    address_space       = ["10.2.0.0/16"]
+  name                = "${local.prefix-spoke2}-vnet"
+  location            = azurerm_resource_group.spoke2-vnet-rg.location
+  resource_group_name = azurerm_resource_group.spoke2-vnet-rg.name
+  address_space       = ["10.2.0.0/16"]
 
-    tags = {
+  tags = {
     environment = local.prefix-spoke2
-    }
+  }
 }
 
 resource "azurerm_subnet" "spoke2-mgmt" {
-    name                 = "mgmt"
-    resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
-    virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
-    address_prefixes     = ["10.2.0.64/27"]
+  name                 = "mgmt"
+  resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
+  address_prefixes     = ["10.2.0.64/27"]
 }
 
 resource "azurerm_subnet" "spoke2-workload" {
-    name                 = "workload"
-    resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
-    virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
-    address_prefixes     = ["10.2.1.0/24"]
+  name                 = "workload"
+  resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
+  address_prefixes     = ["10.2.1.0/24"]
+}
+resource "azurerm_subnet" "spoke2-apim" {
+  name                 = "apim"
+  resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
+  address_prefixes     = ["10.2.3.0/26"]
+}
+
+resource "null_resource" "spoke2-subnets" {
+  depends_on = [
+    azurerm_subnet.spoke2-apim,
+    azurerm_subnet.spoke2-workload,
+    azurerm_subnet.spoke2-mgmt
+  ]
+}
+
+resource "azurerm_network_security_group" "spoke2-apim-nsg" {
+  name                = "${local.prefix-spoke2}-nsg"
+  location            = azurerm_resource_group.spoke2-vnet-rg.location
+  resource_group_name = azurerm_resource_group.spoke2-vnet-rg.name
+
+  security_rule {
+    name                       = "Any"
+    priority                   = 1001
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  tags = {
+    environment = "spoke2"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "spoke2-apim-nsg-association" {
+  subnet_id                 = azurerm_subnet.spoke2-apim.id
+  network_security_group_id = azurerm_network_security_group.spoke2-apim-nsg.id
+  depends_on                = [azurerm_subnet.spoke1-apim, azurerm_network_security_group.spoke2-apim-nsg]
 }
 
 resource "azurerm_virtual_network_peering" "spoke2-hub-peer" {
-    name                      = "${local.prefix-spoke2}-hub-peer"
-    resource_group_name       = azurerm_resource_group.spoke2-vnet-rg.name
-    virtual_network_name      = azurerm_virtual_network.spoke2-vnet.name
-    remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
+  name                      = "${local.prefix-spoke2}-hub-peer"
+  resource_group_name       = azurerm_resource_group.spoke2-vnet-rg.name
+  virtual_network_name      = azurerm_virtual_network.spoke2-vnet.name
+  remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
 
-    allow_virtual_network_access = true
-    allow_forwarded_traffic = true
-    allow_gateway_transit   = false
-    use_remote_gateways     = true
-    depends_on = [azurerm_virtual_network.spoke2-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = false
+  use_remote_gateways          = true
+  depends_on                   = [null_resource.spoke2-subnets, azurerm_virtual_network.spoke2-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
 }
 
-/*
 resource "azurerm_network_interface" "spoke2-nic" {
-    name                 = "${local.prefix-spoke2}-nic"
-    location             = azurerm_resource_group.spoke2-vnet-rg.location
-    resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
-    enable_ip_forwarding = true
+  name                 = "${local.prefix-spoke2}-nic"
+  location             = azurerm_resource_group.spoke2-vnet-rg.location
+  resource_group_name  = azurerm_resource_group.spoke2-vnet-rg.name
+  enable_ip_forwarding = true
 
-    ip_configuration {
+  ip_configuration {
     name                          = local.prefix-spoke2
     subnet_id                     = azurerm_subnet.spoke2-mgmt.id
     private_ip_address_allocation = "Dynamic"
-    }
+  }
 
-    tags = {
+  tags = {
     environment = local.prefix-spoke2
-    }
+  }
 }
 
 resource "azurerm_virtual_machine" "spoke2-vm" {
-    name                  = "${local.prefix-spoke2}-vm"
-    location              = azurerm_resource_group.spoke2-vnet-rg.location
-    resource_group_name   = azurerm_resource_group.spoke2-vnet-rg.name
-    network_interface_ids = [azurerm_network_interface.spoke2-nic.id]
-    vm_size               = var.vmsize
+  name                  = "${local.prefix-spoke2}-vm"
+  location              = azurerm_resource_group.spoke2-vnet-rg.location
+  resource_group_name   = azurerm_resource_group.spoke2-vnet-rg.name
+  network_interface_ids = [azurerm_network_interface.spoke2-nic.id]
+  vm_size               = var.vmsize
 
-    storage_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "16.04-LTS"
-    version   = "latest"
-    }
+  storage_image_reference {
+    publisher = var.vmimage.publisher
+    offer     = var.vmimage.offer
+    sku       = var.vmimage.sku
+    version   = var.vmimage.version
+  }
 
-    storage_os_disk {
+  storage_os_disk {
     name              = "myosdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
-    }
+  }
 
-    os_profile {
+  os_profile {
     computer_name  = "${local.prefix-spoke2}-vm"
     admin_username = var.username
-    admin_password = var.password
-    }
+    admin_password = local.password
+  }
 
-    os_profile_linux_config {
+  os_profile_linux_config {
     disable_password_authentication = false
-    }
+  }
 
-    tags = {
+  tags = {
     environment = local.prefix-spoke2
-    }
+  }
 }
 
-*/
 
 resource "azurerm_virtual_network_peering" "hub-spoke2-peer" {
-    name                      = "hub-spoke2-peer"
-    resource_group_name       = azurerm_resource_group.hub-vnet-rg.name
-    virtual_network_name      = azurerm_virtual_network.hub-vnet.name
-    remote_virtual_network_id = azurerm_virtual_network.spoke2-vnet.id
-    allow_virtual_network_access = true
-    allow_forwarded_traffic   = true
-    allow_gateway_transit     = true
-    use_remote_gateways       = false
-    depends_on = [azurerm_virtual_network.spoke2-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
+  name                         = "hub-spoke2-peer"
+  resource_group_name          = azurerm_resource_group.hub-vnet-rg.name
+  virtual_network_name         = azurerm_virtual_network.hub-vnet.name
+  remote_virtual_network_id    = azurerm_virtual_network.spoke2-vnet.id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = true
+  use_remote_gateways          = false
+  depends_on                   = [null_resource.spoke2-subnets, azurerm_virtual_network.spoke2-vnet, azurerm_virtual_network.hub-vnet, azurerm_virtual_network_gateway.hub-vnet-gateway]
 }

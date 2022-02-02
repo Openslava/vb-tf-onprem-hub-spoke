@@ -14,13 +14,20 @@ param (
 
 $env:TF_VAR_prefix = $prefix
 
-$tfworkspace = " $(terraform workspace list) "
-if (-not $tfworkspace.Contains(" $prefix " )) {
-    terraform workspace new "$prefix"
-} 
+try {
 
-terraform workspace select $prefix
-terraform workspace list
-terraform init
-terraform plan -out "$($prefix).tfplan"
-terraform apply "$($prefix).tfplan"
+
+    $tfworkspace = " $(terraform workspace list) "
+    if (-not $tfworkspace.Contains(" $prefix " )) {
+        terraform workspace new "$prefix"
+    } 
+
+    terraform workspace select $prefix
+    terraform workspace list
+    terraform init
+    terraform plan -out "$($prefix).tfplan"
+    terraform apply "$($prefix).tfplan"
+}
+finally {
+    Write-Output "finish!"
+}
