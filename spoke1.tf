@@ -1,7 +1,7 @@
 locals {
   spoke1-location       = var.location
-  prefix-spoke1         = "spoke1"
-  spoke1-resource-group = "rg-${var.prefix}-${local.prefix-spoke1}-${var.environment}-${var.region}"
+  prefix-spoke1         = "${var.prefix}-spoke1"
+  spoke1-resource-group = "rg-${local.prefix-spoke1}-${var.region}"
 }
 
 resource "azurerm_resource_group" "spoke1-vnet-rg" {
@@ -10,7 +10,7 @@ resource "azurerm_resource_group" "spoke1-vnet-rg" {
 }
 
 resource "azurerm_virtual_network" "spoke1-vnet" {
-  name                = "spoke1-vnet"
+  name                = "vnet-${local.prefix-spoke1}"
   location            = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name = azurerm_resource_group.spoke1-vnet-rg.name
   address_space       = ["10.1.0.0/16"]
@@ -27,11 +27,24 @@ resource "azurerm_subnet" "spoke1-mgmt" {
   address_prefixes     = ["10.1.0.64/27"]
 }
 
+resource "azurerm_subnet" "spoke1-dmz" {
+  name                 = "dmz"
+  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  address_prefixes     = ["10.1.0.32/27"]
+}
+
 resource "azurerm_subnet" "spoke1-workload" {
   name                 = "workload"
   resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.1.0/24"]
+}
+resource "azurerm_subnet" "spoke1-azurefirewallsubnet" {
+  name                 = "AzureFirewallSubnet"
+  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  address_prefixes     = ["10.1.2.0/26"]
 }
 
 resource "azurerm_subnet" "spoke1-apim" {
@@ -43,14 +56,16 @@ resource "azurerm_subnet" "spoke1-apim" {
 
 resource "null_resource" "spoke1-subnets" {
   depends_on = [
-    azurerm_subnet.spoke1-apim,
     azurerm_subnet.spoke1-workload,
-    azurerm_subnet.spoke1-mgmt
+    azurerm_subnet.spoke1-dmz,
+    azurerm_subnet.spoke1-mgmt,
+    azurerm_subnet.spoke1-azurefirewallsubnet,
+    azurerm_subnet.spoke1-apim
   ]
 }
 
 resource "azurerm_network_security_group" "spoke1-apim-nsg" {
-  name                = "${local.prefix-spoke1}-nsg"
+  name                = "nsg-${local.prefix-spoke1}-apim"
   location            = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name = azurerm_resource_group.spoke1-vnet-rg.name
 
@@ -78,7 +93,7 @@ resource "azurerm_subnet_network_security_group_association" "spoke1-apim-nsg-as
 }
 
 resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
-  name                      = "spoke1-hub-peer"
+  name                      = "peer-${local.prefix-spoke1}-spoke1-hub"
   resource_group_name       = azurerm_resource_group.spoke1-vnet-rg.name
   virtual_network_name      = azurerm_virtual_network.spoke1-vnet.name
   remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
@@ -97,7 +112,7 @@ resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
 
 
 resource "azurerm_network_interface" "spoke1-nic" {
-  name                 = "${local.prefix-spoke1}-nic"
+  name                 = "nic-${local.prefix-spoke1}"
   location             = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
   enable_ip_forwarding = true
@@ -107,10 +122,13 @@ resource "azurerm_network_interface" "spoke1-nic" {
     subnet_id                     = azurerm_subnet.spoke1-mgmt.id
     private_ip_address_allocation = "Dynamic"
   }
+  depends_on = [
+    azurerm_subnet.spoke1-mgmt
+  ]
 }
 
 resource "azurerm_virtual_machine" "spoke1-vm" {
-  name                  = "${local.prefix-spoke1}-vm"
+  name                  = "vm${local.prefix-spoke1}"
   location              = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.spoke1-nic.id]
@@ -124,14 +142,14 @@ resource "azurerm_virtual_machine" "spoke1-vm" {
   }
 
   storage_os_disk {
-    name              = "myosdisk1"
+    name              = "${local.prefix-spoke1}-myosdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "${local.prefix-spoke1}-vm"
+    computer_name  = "vm${local.prefix-spoke1}"
     admin_username = var.username
     admin_password = local.password
   }
@@ -143,11 +161,14 @@ resource "azurerm_virtual_machine" "spoke1-vm" {
   tags = {
     environment = local.prefix-spoke1
   }
+  depends_on = [
+    azurerm_network_interface.spoke1-nic
+  ]
 }
 
 
 resource "azurerm_virtual_network_peering" "hub-spoke1-peer" {
-  name                         = "hub-spoke1-peer"
+  name                         = "peer-${var.prefix}-hub-spoke1"
   resource_group_name          = azurerm_resource_group.hub-vnet-rg.name
   virtual_network_name         = azurerm_virtual_network.hub-vnet.name
   remote_virtual_network_id    = azurerm_virtual_network.spoke1-vnet.id

@@ -1,7 +1,6 @@
 # define local variables
 locals {
-  resourceGroupName  = "rg-${var.prefix}-apim-${var.environment}-${var.region}"
-  storageAccountName = "sa${var.prefix}apim${var.environment}${var.region}"
+  resourceGroupName = "rg-${var.prefix}-apim-${var.region}"
 }
 
 # create resource group
