@@ -30,8 +30,8 @@ resource "azurerm_subnet" "spoke1-mgmt" {
 
 resource "azurerm_subnet" "spoke1-dmz" {
   name                 = "dmz"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.0.32/27"]
 }
 
@@ -43,8 +43,8 @@ resource "azurerm_subnet" "spoke1-workload" {
 }
 resource "azurerm_subnet" "spoke1-azurefirewallsubnet" {
   name                 = "AzureFirewallSubnet"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.2.0/26"]
 }
 
