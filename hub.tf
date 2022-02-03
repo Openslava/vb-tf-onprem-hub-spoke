@@ -1,8 +1,8 @@
 locals {
   prefix-hub         = "${var.prefix}-hub"
   hub-location       = var.location
-  hub-resource-group = "${var.prefix}-hub-vnet-rg"
-  shared-key         = "4-v3ry-53cr37-1p53c-5h4r3d-k3y"
+  hub-resource-group = "rg-${local.prefix-hub}-${var.region}"
+  shared-key         = "6-v1ry-86cr37-1a84c-5s4r3d-q3z"
 }
 
 resource "azurerm_resource_group" "hub-vnet-rg" {
@@ -11,7 +11,7 @@ resource "azurerm_resource_group" "hub-vnet-rg" {
 }
 
 resource "azurerm_virtual_network" "hub-vnet" {
-  name                = "${local.prefix-hub}-vnet"
+  name                = "vnet-${local.prefix-hub}"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
   address_space       = ["10.0.0.0/16"]
@@ -74,7 +74,7 @@ resource "null_resource" "hub-subnets" {
 }
 
 resource "azurerm_network_security_group" "hub-nsg" {
-  name                = "${local.prefix-hub}-nsg"
+  name                = "nsg-${local.prefix-hub}"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
 
@@ -109,7 +109,7 @@ resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-associ
 
 
 resource "azurerm_network_interface" "hub-nic" {
-  name                 = "${local.prefix-hub}-nic"
+  name                 = "nic-${local.prefix-hub}"
   location             = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
   enable_ip_forwarding = true
@@ -123,11 +123,14 @@ resource "azurerm_network_interface" "hub-nic" {
   tags = {
     environment = local.prefix-hub
   }
+  depends_on = [
+    azurerm_subnet.hub-mgmt
+  ]
 }
 
 #Virtual Machine
 resource "azurerm_virtual_machine" "hub-vm" {
-  name                  = "${local.prefix-hub}-vm"
+  name                  = "vm${local.prefix-hub}"
   location              = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.hub-nic.id]
@@ -141,14 +144,14 @@ resource "azurerm_virtual_machine" "hub-vm" {
   }
 
   storage_os_disk {
-    name              = "myosdisk1"
+    name              = "${local.prefix-hub}-myosdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "${local.prefix-hub}-vm"
+    computer_name  = "vm${local.prefix-hub}"
     admin_username = var.username
     admin_password = local.password
   }
@@ -160,12 +163,15 @@ resource "azurerm_virtual_machine" "hub-vm" {
   tags = {
     environment = local.prefix-hub
   }
+  depends_on = [
+    azurerm_network_interface.hub-nic
+  ]
 }
 
 
 # Virtual Network Gateway
 resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
-  name                = "hub-vpn-gateway1-pip"
+  name                = "pip-${local.prefix-hub}-vpn-gateway"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
 
@@ -173,7 +179,7 @@ resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
 }
 
 resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
-  name                = "hub-vpn-gateway1"
+  name                = "vgw-${local.prefix-hub}"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
 
@@ -198,7 +204,7 @@ resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
 }
 
 resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
-  name                = "hub-onprem-conn"
+  name                = "conn-${var.prefix}-hub-onprem"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
 
@@ -212,7 +218,7 @@ resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
 }
 
 resource "azurerm_virtual_network_gateway_connection" "onprem-hub-conn" {
-  name                            = "onprem-hub-conn"
+  name                            = "conn-${var.prefix}-onprem-hub"
   location                        = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name             = azurerm_resource_group.onprem-vnet-rg.name
   type                            = "Vnet2Vnet"

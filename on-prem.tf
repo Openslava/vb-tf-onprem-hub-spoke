@@ -4,8 +4,8 @@
 
 locals {
   onprem-location       = var.location
-  prefix-onprem         = "onprem"
-  onprem-resource-group = "rg-${var.prefix}-${local.prefix-onprem}-${var.environment}-${var.region}"
+  prefix-onprem         = "${var.prefix}-onprem"
+  onprem-resource-group = "rg-${local.prefix-onprem}-${var.region}"
 }
 
 resource "azurerm_resource_group" "onprem-vnet-rg" {
@@ -14,7 +14,7 @@ resource "azurerm_resource_group" "onprem-vnet-rg" {
 }
 
 resource "azurerm_virtual_network" "onprem-vnet" {
-  name                = "onprem-vnet"
+  name                = "vnet-${local.prefix-onprem}"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
   address_space       = ["192.168.0.0/16"]
@@ -38,8 +38,15 @@ resource "azurerm_subnet" "onprem-mgmt" {
   address_prefixes     = ["192.168.1.128/25"]
 }
 
+resource "null_resource" "onprem-subnets" {
+  depends_on = [
+    azurerm_subnet.onprem-gateway-subnet,
+    azurerm_subnet.onprem-mgmt
+  ]
+}
+
 resource "azurerm_public_ip" "onprem-pip" {
-  name                = "${local.prefix-onprem}-pip"
+  name                = "pip-${local.prefix-onprem}"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
   allocation_method   = "Dynamic"
@@ -50,7 +57,7 @@ resource "azurerm_public_ip" "onprem-pip" {
 }
 
 resource "azurerm_network_interface" "onprem-nic" {
-  name                 = "${local.prefix-onprem}-nic"
+  name                 = "nic-${local.prefix-onprem}"
   location             = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name  = azurerm_resource_group.onprem-vnet-rg.name
   enable_ip_forwarding = true
@@ -61,11 +68,15 @@ resource "azurerm_network_interface" "onprem-nic" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.onprem-pip.id
   }
+  depends_on = [
+    azurerm_subnet.onprem-mgmt,
+    azurerm_public_ip.onprem-pip
+  ]
 }
 
 # Create Network Security Group and rule
 resource "azurerm_network_security_group" "onprem-nsg" {
-  name                = "${local.prefix-onprem}-nsg"
+  name                = "nsg-${local.prefix-onprem}"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
 
@@ -92,7 +103,7 @@ resource "azurerm_subnet_network_security_group_association" "mgmt-nsg-associati
 }
 
 resource "azurerm_virtual_machine" "onprem-vm" {
-  name                  = "${local.prefix-onprem}-vm"
+  name                  = "vm${local.prefix-onprem}"
   location              = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name   = azurerm_resource_group.onprem-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.onprem-nic.id]
@@ -113,7 +124,7 @@ resource "azurerm_virtual_machine" "onprem-vm" {
   }
 
   os_profile {
-    computer_name  = "${local.prefix-onprem}-vm"
+    computer_name  = "vm${local.prefix-onprem}"
     admin_username = var.username
     admin_password = local.password
   }
@@ -125,10 +136,13 @@ resource "azurerm_virtual_machine" "onprem-vm" {
   tags = {
     environment = local.prefix-onprem
   }
+  depends_on = [
+    azurerm_network_interface.onprem-nic
+  ]
 }
 
 resource "azurerm_public_ip" "onprem-vpn-gateway1-pip" {
-  name                = "${local.prefix-onprem}-vpn-gateway1-pip"
+  name                = "pip-${local.prefix-onprem}-vpn-gateway"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
 
@@ -136,7 +150,7 @@ resource "azurerm_public_ip" "onprem-vpn-gateway1-pip" {
 }
 
 resource "azurerm_virtual_network_gateway" "onprem-vpn-gateway" {
-  name                = "onprem-vpn-gateway1"
+  name                = "vgw-${local.prefix-onprem}"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
 
@@ -153,6 +167,10 @@ resource "azurerm_virtual_network_gateway" "onprem-vpn-gateway" {
     private_ip_address_allocation = "Dynamic"
     subnet_id                     = azurerm_subnet.onprem-gateway-subnet.id
   }
-  depends_on = [azurerm_public_ip.onprem-vpn-gateway1-pip]
+  depends_on = [
+    azurerm_subnet.onprem-gateway-subnet,
+    azurerm_public_ip.onprem-vpn-gateway1-pip,
+    null_resource.onprem-subnets
+  ]
 
 }

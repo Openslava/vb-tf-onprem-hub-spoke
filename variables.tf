@@ -18,11 +18,6 @@ variable "prefix" {
   default     = "vb01"
 }
 
-variable "environment" {
-  description = "environemnt used in naming convention e.g. lab01"
-  default     = "lab01"
-}
-
 variable "region" {
   description = "region used in naming convention e.g. we"
   default     = "we"

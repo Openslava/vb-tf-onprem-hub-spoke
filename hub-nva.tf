@@ -1,11 +1,11 @@
 locals {
   prefix-hub-nva         = "${var.prefix}-hub-nva"
   hub-nva-location       = var.location
-  hub-nva-resource-group = "${var.prefix}-hub-nva-rg"
+  hub-nva-resource-group = "rg-${local.prefix-hub-nva}-${var.region}"
 }
 
 resource "azurerm_resource_group" "hub-nva-rg" {
-  name     = "${local.prefix-hub-nva}-rg"
+  name     = local.hub-nva-resource-group
   location = local.hub-nva-location
 
   tags = {
@@ -14,7 +14,7 @@ resource "azurerm_resource_group" "hub-nva-rg" {
 }
 
 resource "azurerm_network_interface" "hub-nva-nic" {
-  name                 = "${local.prefix-hub-nva}-nic"
+  name                 = "nic-${local.prefix-hub-nva}"
   location             = azurerm_resource_group.hub-nva-rg.location
   resource_group_name  = azurerm_resource_group.hub-nva-rg.name
   enable_ip_forwarding = true
@@ -29,10 +29,13 @@ resource "azurerm_network_interface" "hub-nva-nic" {
   tags = {
     environment = local.prefix-hub-nva
   }
+  depends_on = [
+    azurerm_subnet.hub-dmz
+  ]
 }
 
 resource "azurerm_virtual_machine" "hub-nva-vm" {
-  name                  = "${local.prefix-hub-nva}-vm"
+  name                  = "vm${local.prefix-hub-nva}"
   location              = azurerm_resource_group.hub-nva-rg.location
   resource_group_name   = azurerm_resource_group.hub-nva-rg.name
   network_interface_ids = [azurerm_network_interface.hub-nva-nic.id]
@@ -46,14 +49,14 @@ resource "azurerm_virtual_machine" "hub-nva-vm" {
   }
 
   storage_os_disk {
-    name              = "myosdisk1"
+    name              = "${local.prefix-hub-nva}-myosdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "${local.prefix-hub-nva}-vm"
+    computer_name  = "vm${local.prefix-hub-nva}"
     admin_username = var.username
     admin_password = local.password
   }
@@ -65,6 +68,7 @@ resource "azurerm_virtual_machine" "hub-nva-vm" {
   tags = {
     environment = local.prefix-hub-nva
   }
+  depends_on = [azurerm_network_interface.hub-nva-nic]
 }
 
 resource "azurerm_virtual_machine_extension" "enable-routes" {
@@ -90,7 +94,7 @@ SETTINGS
 }
 
 resource "azurerm_route_table" "hub-gateway-rt" {
-  name                          = "${local.prefix-hub-nva}-hub-gateway-rt"
+  name                          = "rt-${local.prefix-hub-nva}-hub-gateway"
   location                      = azurerm_resource_group.hub-nva-rg.location
   resource_group_name           = azurerm_resource_group.hub-nva-rg.name
   disable_bgp_route_propagation = false
@@ -127,7 +131,7 @@ resource "azurerm_subnet_route_table_association" "hub-gateway-rt-hub-vnet-gatew
 }
 
 resource "azurerm_route_table" "spoke1-rt" {
-  name                          = "${local.prefix-hub-nva}-spoke1-rt"
+  name                          = "rt-${local.prefix-hub-nva}-spoke1"
   location                      = azurerm_resource_group.hub-nva-rg.location
   resource_group_name           = azurerm_resource_group.hub-nva-rg.name
   disable_bgp_route_propagation = false
@@ -169,7 +173,7 @@ resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-apim" {
 }
 
 resource "azurerm_route_table" "spoke2-rt" {
-  name                          = "${local.prefix-hub-nva}-spoke2-rt"
+  name                          = "rt-${local.prefix-hub-nva}-spoke2"
   location                      = azurerm_resource_group.hub-nva-rg.location
   resource_group_name           = azurerm_resource_group.hub-nva-rg.name
   disable_bgp_route_propagation = false

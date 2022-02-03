@@ -18,8 +18,17 @@ some of the user scenarios
 
 _peering_
 
-- on-prem to hub - peering to simulate VNET gateway
 - spoke to hub
+- on-prem to hub - using VPN gateway - ( TBD peering to simulate VNET gateway )
+
+**resource groups**
+
+- onprem    - on-prem resources
+- hub       - hub reposurces
+- hub-nva   - VNA in hub
+- spoke1    - spoke1 resources
+- spoke2    - spoke2 resources
+- apim      - placefolder for APIM
 
 ## quickstart first deployment
 
