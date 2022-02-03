@@ -6,6 +6,7 @@ locals {
   onprem-location       = var.location
   prefix-onprem         = "${var.prefix}-onprem"
   onprem-resource-group = "rg-${local.prefix-onprem}-${var.region}"
+  onprem-vmname         = "vm${var.prefix}onprem"
 }
 
 resource "azurerm_resource_group" "onprem-vnet-rg" {
@@ -46,7 +47,7 @@ resource "null_resource" "onprem-subnets" {
 }
 
 resource "azurerm_public_ip" "onprem-pip" {
-  name                = "pip-${local.prefix-onprem}"
+  name                = "pip-${local.onprem-vmname}"
   location            = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name = azurerm_resource_group.onprem-vnet-rg.name
   allocation_method   = "Dynamic"
@@ -57,7 +58,7 @@ resource "azurerm_public_ip" "onprem-pip" {
 }
 
 resource "azurerm_network_interface" "onprem-nic" {
-  name                 = "nic-${local.prefix-onprem}"
+  name                 = "nic-${local.onprem-vmname}"
   location             = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name  = azurerm_resource_group.onprem-vnet-rg.name
   enable_ip_forwarding = true
@@ -103,7 +104,7 @@ resource "azurerm_subnet_network_security_group_association" "mgmt-nsg-associati
 }
 
 resource "azurerm_virtual_machine" "onprem-vm" {
-  name                  = "vm${local.prefix-onprem}"
+  name                  = local.onprem-vmname
   location              = azurerm_resource_group.onprem-vnet-rg.location
   resource_group_name   = azurerm_resource_group.onprem-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.onprem-nic.id]
@@ -117,14 +118,14 @@ resource "azurerm_virtual_machine" "onprem-vm" {
   }
 
   storage_os_disk {
-    name              = "myosdisk1"
+    name              = "disk-${local.onprem-vmname}-osdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "vm${local.prefix-onprem}"
+    computer_name  = local.onprem-vmname
     admin_username = var.username
     admin_password = local.password
   }

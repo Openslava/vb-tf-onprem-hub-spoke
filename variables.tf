@@ -23,13 +23,18 @@ variable "region" {
   default     = "we"
 }
 
-resource "random_string" "password" {
-  length  = 16
-  special = true
+resource "random_password" "password" {
+  length           = 16
+  special          = true
+  override_special = "!_"
+  min_lower        = 1
+  min_numeric      = 1
+  min_special      = 1
+  min_upper        = 1
 }
 
 locals {
-  password = sha256(bcrypt(random_string.password.result))
+  password = random_password.password.result
 }
 
 variable "vmimage" {

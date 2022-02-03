@@ -2,6 +2,7 @@ locals {
   prefix-hub         = "${var.prefix}-hub"
   hub-location       = var.location
   hub-resource-group = "rg-${local.prefix-hub}-${var.region}"
+  hub-vmname         = "vm${var.prefix}hub"
   shared-key         = "6-v1ry-86cr37-1a84c-5s4r3d-q3z"
 }
 
@@ -104,12 +105,25 @@ resource "azurerm_subnet_network_security_group_association" "hub-apim-nsg-assoc
 resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-association" {
   subnet_id                 = azurerm_subnet.hub-dmz.id
   network_security_group_id = azurerm_network_security_group.hub-nsg.id
-  depends_on                = [azurerm_subnet.hub-dmz, azurerm_network_security_group.hub-nsg]
+  depends_on = [
+    azurerm_subnet.hub-dmz,
+    azurerm_network_security_group.hub-nsg
+  ]
 }
 
+resource "azurerm_public_ip" "hub-pip" {
+  name                = "pip-${local.hub-vmname}"
+  location            = azurerm_resource_group.hub-vnet-rg.location
+  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  allocation_method   = "Dynamic"
+
+  tags = {
+    environment = local.prefix-hub
+  }
+}
 
 resource "azurerm_network_interface" "hub-nic" {
-  name                 = "nic-${local.prefix-hub}"
+  name                 = "nic-${local.hub-vmname}"
   location             = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
   enable_ip_forwarding = true
@@ -118,19 +132,21 @@ resource "azurerm_network_interface" "hub-nic" {
     name                          = local.prefix-hub
     subnet_id                     = azurerm_subnet.hub-mgmt.id
     private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.hub-pip.id
   }
 
   tags = {
     environment = local.prefix-hub
   }
   depends_on = [
-    azurerm_subnet.hub-mgmt
+    azurerm_subnet.hub-mgmt,
+    azurerm_public_ip.hub-pip
   ]
 }
 
 #Virtual Machine
 resource "azurerm_virtual_machine" "hub-vm" {
-  name                  = "vm${local.prefix-hub}"
+  name                  = local.hub-vmname
   location              = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.hub-nic.id]
@@ -144,14 +160,14 @@ resource "azurerm_virtual_machine" "hub-vm" {
   }
 
   storage_os_disk {
-    name              = "${local.prefix-hub}-myosdisk1"
+    name              = "disk-${local.hub-vmname}-osdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "vm${local.prefix-hub}"
+    computer_name  = local.hub-vmname
     admin_username = var.username
     admin_password = local.password
   }
