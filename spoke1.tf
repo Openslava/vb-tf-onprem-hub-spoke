@@ -2,6 +2,7 @@ locals {
   spoke1-location       = var.location
   prefix-spoke1         = "${var.prefix}-spoke1"
   spoke1-resource-group = "rg-${local.prefix-spoke1}-${var.region}"
+  spoke1-vmname         = "vm${var.prefix}spoke1"
 }
 
 resource "azurerm_resource_group" "spoke1-vnet-rg" {
@@ -112,7 +113,7 @@ resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
 
 
 resource "azurerm_network_interface" "spoke1-nic" {
-  name                 = "nic-${local.prefix-spoke1}"
+  name                 = "nic-${local.spoke1-vmname}"
   location             = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
   enable_ip_forwarding = true
@@ -128,7 +129,7 @@ resource "azurerm_network_interface" "spoke1-nic" {
 }
 
 resource "azurerm_virtual_machine" "spoke1-vm" {
-  name                  = "vm${local.prefix-spoke1}"
+  name                  = local.spoke1-vmname
   location              = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name
   network_interface_ids = [azurerm_network_interface.spoke1-nic.id]
@@ -142,14 +143,14 @@ resource "azurerm_virtual_machine" "spoke1-vm" {
   }
 
   storage_os_disk {
-    name              = "${local.prefix-spoke1}-myosdisk1"
+    name              = "disk-${local.spoke1-vmname}-osdisk"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "vm${local.prefix-spoke1}"
+    computer_name  = local.spoke1-vmname
     admin_username = var.username
     admin_password = local.password
   }

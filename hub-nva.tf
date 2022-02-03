@@ -2,6 +2,7 @@ locals {
   prefix-hub-nva         = "${var.prefix}-hub-nva"
   hub-nva-location       = var.location
   hub-nva-resource-group = "rg-${local.prefix-hub-nva}-${var.region}"
+  hub-nva-vmname         = "vm${var.prefix}hubnva"
 }
 
 resource "azurerm_resource_group" "hub-nva-rg" {
@@ -14,7 +15,7 @@ resource "azurerm_resource_group" "hub-nva-rg" {
 }
 
 resource "azurerm_network_interface" "hub-nva-nic" {
-  name                 = "nic-${local.prefix-hub-nva}"
+  name                 = "nic-${local.hub-nva-vmname}"
   location             = azurerm_resource_group.hub-nva-rg.location
   resource_group_name  = azurerm_resource_group.hub-nva-rg.name
   enable_ip_forwarding = true
@@ -35,7 +36,7 @@ resource "azurerm_network_interface" "hub-nva-nic" {
 }
 
 resource "azurerm_virtual_machine" "hub-nva-vm" {
-  name                  = "vm${local.prefix-hub-nva}"
+  name                  = local.hub-nva-vmname
   location              = azurerm_resource_group.hub-nva-rg.location
   resource_group_name   = azurerm_resource_group.hub-nva-rg.name
   network_interface_ids = [azurerm_network_interface.hub-nva-nic.id]
@@ -49,14 +50,14 @@ resource "azurerm_virtual_machine" "hub-nva-vm" {
   }
 
   storage_os_disk {
-    name              = "${local.prefix-hub-nva}-myosdisk1"
+    name              = "disk-${local.hub-nva-vmname}-osdisk1"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Standard_LRS"
   }
 
   os_profile {
-    computer_name  = "vm${local.prefix-hub-nva}"
+    computer_name  = local.hub-nva-vmname
     admin_username = var.username
     admin_password = local.password
   }
