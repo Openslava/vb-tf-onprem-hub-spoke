@@ -38,5 +38,10 @@ _peering_
     az account set -s [subscription name]
     az account show
 
+    # deploy hub + spoke1 + spoke2 
     .\deploy.ps1 -prefix test01
+
+    # deploy onprem + hub + spoke1 + spoke2 
+    .\deploy.ps1 -onprem -prefix test01 
+
 ```

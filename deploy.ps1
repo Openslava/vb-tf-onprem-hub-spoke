@@ -7,12 +7,14 @@
 [CmdletBinding()]
 param (
     [Parameter()]
-    $prefix
+    $prefix,
+    [switch]$onprem   # by default do not deploy on prem and gateways
 )
 
 # $env:ARM_SKIP_PROVIDER_REGISTRATION='true'
 
 $env:TF_VAR_prefix = $prefix
+$env:TF_VAR_onprem = $onprem
 
 try {
 

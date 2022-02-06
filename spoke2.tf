@@ -85,13 +85,13 @@ resource "azurerm_virtual_network_peering" "spoke2-hub-peer" {
 
   allow_virtual_network_access = true
   allow_forwarded_traffic      = true
-  allow_gateway_transit        = false
-  use_remote_gateways          = true
+  allow_gateway_transit        = true
+  use_remote_gateways          = false
   depends_on = [
     null_resource.spoke2-subnets,
+    null_resource.hub-subnets,
     azurerm_virtual_network.spoke2-vnet,
-    azurerm_virtual_network.hub-vnet,
-    azurerm_virtual_network_gateway.hub-vnet-gateway
+    azurerm_virtual_network.hub-vnet
   ]
 }
 
@@ -167,6 +167,7 @@ resource "azurerm_virtual_network_peering" "hub-spoke2-peer" {
   use_remote_gateways          = false
   depends_on = [
     null_resource.spoke2-subnets,
+    null_resource.hub-subnets,
     azurerm_virtual_network.spoke2-vnet,
     azurerm_virtual_network.hub-vnet,
     azurerm_virtual_network_gateway.hub-vnet-gateway
