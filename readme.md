@@ -44,4 +44,37 @@ _peering_
     # deploy onprem + hub + spoke1 + spoke2 
     .\deploy.ps1 -onprem -prefix test01 
 
+    # get password for VMs
+    terraform output password
 ```
+
+## run command on VM's
+
+Via azure portal on respective VM run is possible ro run shell command. or via SSH on Jumpbox thta have public IP e.g. in hub.
+
+here is list of some of hte usefull commands 
+
+```bash
+    # update ubuntu
+    sudo apt-get update
+
+    # upgrade
+    sudo apt-get upgrade -y
+
+    # install web server
+    sudo apt install apache2 -y
+    sudo ufw allow 'Apache Full'
+
+    # install net tools to be able to execute ifconfig
+    sudo apt install net-tools
+
+    # nework scan tool
+    sudo apt install nmap -y
+```
+
+
+
+
+
+
+
