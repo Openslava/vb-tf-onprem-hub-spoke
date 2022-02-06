@@ -99,14 +99,16 @@ resource "azurerm_network_security_group" "hub-nsg" {
 resource "azurerm_subnet_network_security_group_association" "hub-apim-nsg-association" {
   subnet_id                 = azurerm_subnet.hub-apim.id
   network_security_group_id = azurerm_network_security_group.hub-nsg.id
-  depends_on                = [azurerm_subnet.hub-apim, azurerm_network_security_group.hub-nsg]
+  depends_on                = [
+    null_resource.hub-subnets, 
+    azurerm_network_security_group.hub-nsg]
 }
 
 resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-association" {
   subnet_id                 = azurerm_subnet.hub-dmz.id
   network_security_group_id = azurerm_network_security_group.hub-nsg.id
   depends_on = [
-    azurerm_subnet.hub-dmz,
+    null_resource.hub-subnets,
     azurerm_network_security_group.hub-nsg
   ]
 }
@@ -139,7 +141,7 @@ resource "azurerm_network_interface" "hub-nic" {
     environment = local.prefix-hub
   }
   depends_on = [
-    azurerm_subnet.hub-mgmt,
+    null_resource.hub-subnets,
     azurerm_public_ip.hub-pip
   ]
 }
@@ -187,6 +189,7 @@ resource "azurerm_virtual_machine" "hub-vm" {
 
 # Virtual Network Gateway
 resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
+  count               = var.onprem == "True" ? 1 : 0
   name                = "pip-${local.prefix-hub}-vpn-gateway"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
@@ -195,6 +198,7 @@ resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
 }
 
 resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
+  count               = var.onprem == "True" ? 1 : 0
   name                = "vgw-${local.prefix-hub}"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
@@ -208,18 +212,18 @@ resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
 
   ip_configuration {
     name                          = "vnetGatewayConfig"
-    public_ip_address_id          = azurerm_public_ip.hub-vpn-gateway1-pip.id
+    public_ip_address_id          = azurerm_public_ip.hub-vpn-gateway1-pip[0].id
     private_ip_address_allocation = "Dynamic"
     subnet_id                     = azurerm_subnet.hub-gateway-subnet.id
   }
   depends_on = [
     azurerm_public_ip.hub-vpn-gateway1-pip,
-    azurerm_subnet.hub-gateway-subnet,
     null_resource.hub-subnets
   ]
 }
 
 resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
+  count               = var.onprem == "True" ? 1 : 0
   name                = "conn-${var.prefix}-hub-onprem"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
@@ -227,20 +231,21 @@ resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
   type           = "Vnet2Vnet"
   routing_weight = 1
 
-  virtual_network_gateway_id      = azurerm_virtual_network_gateway.hub-vnet-gateway.id
-  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.onprem-vpn-gateway.id
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.hub-vnet-gateway[0].id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.onprem-vpn-gateway[0].id
 
   shared_key = local.shared-key
 }
 
 resource "azurerm_virtual_network_gateway_connection" "onprem-hub-conn" {
+  count                           = var.onprem == "True" ? 1 : 0
   name                            = "conn-${var.prefix}-onprem-hub"
-  location                        = azurerm_resource_group.onprem-vnet-rg.location
-  resource_group_name             = azurerm_resource_group.onprem-vnet-rg.name
+  location                        = azurerm_resource_group.onprem-rg[0].location
+  resource_group_name             = azurerm_resource_group.onprem-rg[0].name
   type                            = "Vnet2Vnet"
   routing_weight                  = 1
-  virtual_network_gateway_id      = azurerm_virtual_network_gateway.onprem-vpn-gateway.id
-  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.hub-vnet-gateway.id
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.onprem-vpn-gateway[0].id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.hub-vnet-gateway[0].id
 
   shared_key = local.shared-key
 }

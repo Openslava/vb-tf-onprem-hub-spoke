@@ -45,3 +45,7 @@ variable "vmimage" {
     version   = "latest"
   }
 }
+
+variable "onprem" {
+  default = false
+}

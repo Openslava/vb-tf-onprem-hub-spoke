@@ -128,7 +128,9 @@ resource "azurerm_route_table" "hub-gateway-rt" {
 resource "azurerm_subnet_route_table_association" "hub-gateway-rt-hub-vnet-gateway-subnet" {
   subnet_id      = azurerm_subnet.hub-gateway-subnet.id
   route_table_id = azurerm_route_table.hub-gateway-rt.id
-  depends_on     = [azurerm_subnet.hub-gateway-subnet]
+  depends_on     = [
+    null_resource.hub-subnets
+  ]
 }
 
 resource "azurerm_route_table" "spoke1-rt" {
@@ -158,19 +160,25 @@ resource "azurerm_route_table" "spoke1-rt" {
 resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-mgmt" {
   subnet_id      = azurerm_subnet.spoke1-mgmt.id
   route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [azurerm_subnet.spoke1-mgmt]
+  depends_on     = [
+    null_resource.spoke1-subnets
+  ]
 }
 
 resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-workload" {
   subnet_id      = azurerm_subnet.spoke1-workload.id
   route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [azurerm_subnet.spoke1-workload]
+  depends_on     = [
+    null_resource.spoke1-subnets
+  ]
 }
 
 resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-apim" {
   subnet_id      = azurerm_subnet.spoke1-apim.id
   route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [azurerm_subnet.spoke1-apim]
+  depends_on     = [
+    null_resource.spoke1-subnets
+  ]
 }
 
 resource "azurerm_route_table" "spoke2-rt" {
@@ -200,17 +208,23 @@ resource "azurerm_route_table" "spoke2-rt" {
 resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-mgmt" {
   subnet_id      = azurerm_subnet.spoke2-mgmt.id
   route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [azurerm_subnet.spoke2-mgmt]
+  depends_on     = [
+    null_resource.spoke2-subnets
+  ]
 }
 
 resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-workload" {
   subnet_id      = azurerm_subnet.spoke2-workload.id
   route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [azurerm_subnet.spoke2-workload]
+  depends_on     = [
+    null_resource.spoke2-subnets
+  ]
 }
 
 resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-apim" {
   subnet_id      = azurerm_subnet.spoke2-apim.id
   route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [azurerm_subnet.spoke2-apim]
+  depends_on     = [
+    null_resource.spoke2-subnets
+  ]
 }
