@@ -5,7 +5,7 @@ variable "location" {
 
 variable "username" {
   description = "Username for Virtual Machines"
-  default     = "viliamb"
+  default     = "vmadmin"
 }
 
 variable "vmsize" {
