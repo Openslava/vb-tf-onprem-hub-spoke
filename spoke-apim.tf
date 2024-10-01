@@ -46,7 +46,7 @@ resource "azurerm_api_management" "apim" {
   virtual_network_type = "Internal"
   zones                = null
   public_ip_address_id = azurerm_public_ip.public-ip[count.index].id
-  
+
 
   virtual_network_configuration {
     subnet_id = azurerm_subnet.spoke1-apim.id
@@ -65,15 +65,15 @@ resource "azurerm_api_management" "apim" {
 resource "azurerm_network_security_rule" "apim_nsg_rule0" {
   resource_group_name         = azurerm_network_security_group.spoke1-apim-nsg.resource_group_name
   network_security_group_name = azurerm_network_security_group.spoke1-apim-nsg.name
-      name                       = "general-ports"
-      priority                   = 4094
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "Tcp"
-      source_port_range          = "*"
-      source_address_prefix      = "*"
-      destination_port_ranges    = ["443","80", "22"]
-      destination_address_prefix = "VirtualNetwork"
+  name                        = "general-ports"
+  priority                    = 4094
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  source_address_prefix       = "*"
+  destination_port_ranges     = ["443", "80", "22"]
+  destination_address_prefix  = "VirtualNetwork"
 }
 
 resource "azurerm_network_security_rule" "apim_nsg_rule1" {

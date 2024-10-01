@@ -116,9 +116,9 @@ resource "azurerm_route_table" "spoke1-rt-apim" {
   bgp_route_propagation_enabled = false
 
   route {
-    name                   = "apim-mngm"
-    address_prefix         = "ApiManagement"
-    next_hop_type          = "Internet"
+    name           = "apim-mngm"
+    address_prefix = "ApiManagement"
+    next_hop_type  = "Internet"
   }
 
   route {
