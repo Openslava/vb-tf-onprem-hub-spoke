@@ -15,10 +15,10 @@ resource "azurerm_resource_group" "hub-nva-rg" {
 }
 
 resource "azurerm_network_interface" "hub-nva-nic" {
-  name                 = "nic-${local.hub-nva-vmname}"
-  location             = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name  = azurerm_resource_group.hub-nva-rg.name
-  enable_ip_forwarding = true
+  name                  = "nic-${local.hub-nva-vmname}"
+  location              = azurerm_resource_group.hub-nva-rg.location
+  resource_group_name   = azurerm_resource_group.hub-nva-rg.name
+  ip_forwarding_enabled = true
 
   ip_configuration {
     name                          = local.prefix-hub-nva
@@ -36,6 +36,7 @@ resource "azurerm_network_interface" "hub-nva-nic" {
 }
 
 resource "azurerm_virtual_machine" "hub-nva-vm" {
+  count                 = var.vms == "True" ? 1 : 0
   name                  = local.hub-nva-vmname
   location              = azurerm_resource_group.hub-nva-rg.location
   resource_group_name   = azurerm_resource_group.hub-nva-rg.name
@@ -73,13 +74,15 @@ resource "azurerm_virtual_machine" "hub-nva-vm" {
 }
 
 resource "azurerm_virtual_machine_extension" "enable-routes" {
+  count                = var.vms == "True" ? 1 : 0
   name                 = "enable-iptables-routes"
-  virtual_machine_id   = azurerm_virtual_machine.hub-nva-vm.id
+  virtual_machine_id   = azurerm_virtual_machine.hub-nva-vm[count.index].id
   publisher            = "Microsoft.Azure.Extensions"
   type                 = "CustomScript"
   type_handler_version = "2.0"
 
-
+  # the mentioned url does not exists anymore
+  /*
   settings = <<SETTINGS
     {
         "fileUris": [
@@ -87,8 +90,8 @@ resource "azurerm_virtual_machine_extension" "enable-routes" {
         ],
         "commandToExecute": "bash enable-ip-forwarding.sh"
     }
-SETTINGS
-
+  SETTINGS
+  */
   tags = {
     environment = local.prefix-hub-nva
   }
@@ -98,7 +101,7 @@ resource "azurerm_route_table" "hub-gateway-rt" {
   name                          = "rt-${local.prefix-hub-nva}-hub-gateway"
   location                      = azurerm_resource_group.hub-nva-rg.location
   resource_group_name           = azurerm_resource_group.hub-nva-rg.name
-  disable_bgp_route_propagation = false
+  bgp_route_propagation_enabled = false
 
   route {
     name           = "toHub"
@@ -128,103 +131,7 @@ resource "azurerm_route_table" "hub-gateway-rt" {
 resource "azurerm_subnet_route_table_association" "hub-gateway-rt-hub-vnet-gateway-subnet" {
   subnet_id      = azurerm_subnet.hub-gateway-subnet.id
   route_table_id = azurerm_route_table.hub-gateway-rt.id
-  depends_on     = [
+  depends_on = [
     null_resource.hub-subnets
-  ]
-}
-
-resource "azurerm_route_table" "spoke1-rt" {
-  name                          = "rt-${local.prefix-hub-nva}-spoke1"
-  location                      = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
-  disable_bgp_route_propagation = false
-
-  route {
-    name                   = "toSpoke2"
-    address_prefix         = "10.2.0.0/16"
-    next_hop_type          = "VirtualAppliance"
-    next_hop_in_ip_address = "10.0.0.36"
-  }
-
-  route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "vnetlocal"
-  }
-
-  tags = {
-    environment = local.prefix-hub-nva
-  }
-}
-
-resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-mgmt" {
-  subnet_id      = azurerm_subnet.spoke1-mgmt.id
-  route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [
-    null_resource.spoke1-subnets
-  ]
-}
-
-resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-workload" {
-  subnet_id      = azurerm_subnet.spoke1-workload.id
-  route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [
-    null_resource.spoke1-subnets
-  ]
-}
-
-resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-apim" {
-  subnet_id      = azurerm_subnet.spoke1-apim.id
-  route_table_id = azurerm_route_table.spoke1-rt.id
-  depends_on     = [
-    null_resource.spoke1-subnets
-  ]
-}
-
-resource "azurerm_route_table" "spoke2-rt" {
-  name                          = "rt-${local.prefix-hub-nva}-spoke2"
-  location                      = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
-  disable_bgp_route_propagation = false
-
-  route {
-    name                   = "toSpoke1"
-    address_prefix         = "10.1.0.0/16"
-    next_hop_in_ip_address = "10.0.0.36"
-    next_hop_type          = "VirtualAppliance"
-  }
-
-  route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "vnetlocal"
-  }
-
-  tags = {
-    environment = local.prefix-hub-nva
-  }
-}
-
-resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-mgmt" {
-  subnet_id      = azurerm_subnet.spoke2-mgmt.id
-  route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [
-    null_resource.spoke2-subnets
-  ]
-}
-
-resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-workload" {
-  subnet_id      = azurerm_subnet.spoke2-workload.id
-  route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [
-    null_resource.spoke2-subnets
-  ]
-}
-
-resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-apim" {
-  subnet_id      = azurerm_subnet.spoke2-apim.id
-  route_table_id = azurerm_route_table.spoke2-rt.id
-  depends_on     = [
-    null_resource.spoke2-subnets
   ]
 }

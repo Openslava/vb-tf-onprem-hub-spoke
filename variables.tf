@@ -49,3 +49,12 @@ variable "vmimage" {
 variable "onprem" {
   default = false
 }
+
+
+variable "apim" {
+  default = false
+}
+
+variable "vms" {
+  default = false
+}

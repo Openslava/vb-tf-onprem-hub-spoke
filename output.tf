@@ -4,5 +4,5 @@ output "password" {
 }
 
 output "username" {
-  value     = var.username
+  value = var.username
 }

@@ -99,9 +99,9 @@ resource "azurerm_network_security_group" "hub-nsg" {
 resource "azurerm_subnet_network_security_group_association" "hub-apim-nsg-association" {
   subnet_id                 = azurerm_subnet.hub-apim.id
   network_security_group_id = azurerm_network_security_group.hub-nsg.id
-  depends_on                = [
-    null_resource.hub-subnets, 
-    azurerm_network_security_group.hub-nsg]
+  depends_on = [
+    null_resource.hub-subnets,
+  azurerm_network_security_group.hub-nsg]
 }
 
 resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-association" {
@@ -117,7 +117,8 @@ resource "azurerm_public_ip" "hub-pip" {
   name                = "pip-${local.hub-vmname}"
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
-  allocation_method   = "Dynamic"
+  allocation_method   = "Static"
+  sku                 = "Standard"
 
   tags = {
     environment = local.prefix-hub
@@ -125,10 +126,10 @@ resource "azurerm_public_ip" "hub-pip" {
 }
 
 resource "azurerm_network_interface" "hub-nic" {
-  name                 = "nic-${local.hub-vmname}"
-  location             = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
-  enable_ip_forwarding = true
+  name                  = "nic-${local.hub-vmname}"
+  location              = azurerm_resource_group.hub-vnet-rg.location
+  resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
+  ip_forwarding_enabled = true
 
   ip_configuration {
     name                          = local.prefix-hub
@@ -148,6 +149,7 @@ resource "azurerm_network_interface" "hub-nic" {
 
 #Virtual Machine
 resource "azurerm_virtual_machine" "hub-vm" {
+  count                 = var.vms == "True" ? 1 : 0
   name                  = local.hub-vmname
   location              = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
