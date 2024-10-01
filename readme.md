@@ -30,6 +30,14 @@ _peering_
 - spoke2    - spoke2 resources
 - apim      - placefolder for APIM
 
+**vnet topology**
+- spoke1        - 10.1.0.0/16
+    - mgmt(10.1.0.64/27), dmz (10.1.0.32/27), workload (10.1.1.0/24), AzureFirewallSubnet (10.1.2.0/26), apim (10.1.3.0/26)
+- spoke2    - 10.2.0.0/16
+- hub       - 10.0.0.0/16
+    - GatewaySubnet (10.0.255.224/27), mgmt, dmz, AzureFirewallSubnet (10.0.1.0/26), AzureBastionSubnet (10.0.2.0/24), apim
+- on-prem   - 192.168.0.0/16 (optional deployment)
+
 ## quickstart first deployment
 
 ```powershell
