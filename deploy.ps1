@@ -22,7 +22,7 @@ $env:TF_VAR_apim   = $apim
 $env:TF_VAR_vms   = $vms
 
 $accountjson = "$(az account show --output json)"
-$account = convertfrom-json -inputObject $x
+$account = convertfrom-json -inputObject $accountjson
 $env:ARM_SUBSCRIPTION_ID = $account.id
 Write-output $account
 try {
