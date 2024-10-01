@@ -8,14 +8,23 @@
 param (
     [Parameter()]
     $prefix,
-    [switch]$onprem   # by default do not deploy on prem and gateways
+    [switch]$onprem,  # by default do not deploy on prem and gateways
+    [switch]$destroy, # used to destroy the created resources
+    [switch]$apim,    # deploy apim
+    [switch]$vms      # deploy VMs  
 )
 
 # $env:ARM_SKIP_PROVIDER_REGISTRATION='true'
 
 $env:TF_VAR_prefix = $prefix
 $env:TF_VAR_onprem = $onprem
+$env:TF_VAR_apim   = $apim
+$env:TF_VAR_vms   = $vms
 
+$accountjson = "$(az account show --output json)"
+$account = convertfrom-json -inputObject $x
+$env:ARM_SUBSCRIPTION_ID = $account.id
+Write-output $account
 try {
 
 
@@ -27,8 +36,13 @@ try {
     terraform workspace select $prefix
     terraform workspace list
     terraform init
-    terraform plan -out "$($prefix).tfplan"
-    terraform apply "$($prefix).tfplan"
+    
+    if($destroy) {
+        terraform destroy
+    } else {
+        terraform plan -out "$($prefix).tfplan"
+        terraform apply "$($prefix).tfplan"
+    }
 }
 finally {
     Write-Output "finish!"

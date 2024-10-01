@@ -44,8 +44,18 @@ _peering_
     # deploy onprem + hub + spoke1 + spoke2 
     .\deploy.ps1 -onprem -prefix test01 
 
+
+    # deploy - network and apim only
+    ./deploy.ps1 -prefix vb07 -apim
+
     # get password for VMs
     terraform output password
+```
+
+## destroy all created resources 
+```powershell
+    # delete all resources persisted in state file on local machine
+    terraform destroy
 ```
 
 ## run command on VM's

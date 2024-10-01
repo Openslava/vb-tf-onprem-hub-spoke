@@ -10,6 +10,7 @@ resource "azurerm_resource_group" "spoke1-vnet-rg" {
   location = local.spoke1-location
 }
 
+# ------- VNET spoke1 ----------
 resource "azurerm_virtual_network" "spoke1-vnet" {
   name                = "vnet-${local.prefix-spoke1}"
   location            = azurerm_resource_group.spoke1-vnet-rg.location
@@ -65,22 +66,12 @@ resource "null_resource" "spoke1-subnets" {
   ]
 }
 
+# ------- NSG spoke1 ----------
+
 resource "azurerm_network_security_group" "spoke1-apim-nsg" {
   name                = "nsg-${local.prefix-spoke1}-apim"
   location            = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name = azurerm_resource_group.spoke1-vnet-rg.name
-
-  security_rule {
-    name                       = "Any"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
 
   tags = {
     environment = "spoke1"
@@ -93,6 +84,85 @@ resource "azurerm_subnet_network_security_group_association" "spoke1-apim-nsg-as
   depends_on                = [azurerm_subnet.spoke1-apim, azurerm_network_security_group.spoke1-apim-nsg]
 }
 
+# ------- Route Tables spoke1 ----------
+resource "azurerm_route_table" "spoke1-rt" {
+  name                          = "rt-${local.prefix-hub-nva}-spoke1"
+  location                      = azurerm_resource_group.hub-nva-rg.location
+  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
+  bgp_route_propagation_enabled = false
+
+  route {
+    name                   = "toSpoke2"
+    address_prefix         = "10.2.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = "10.0.0.36"
+  }
+
+  route {
+    name           = "default"
+    address_prefix = "0.0.0.0/0"
+    next_hop_type  = "VnetLocal"
+  }
+
+  tags = {
+    environment = local.prefix-hub-nva
+  }
+}
+
+resource "azurerm_route_table" "spoke1-rt-apim" {
+  name                          = "rt-${local.prefix-hub-nva}-spoke1-apim"
+  location                      = azurerm_resource_group.hub-nva-rg.location
+  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
+  bgp_route_propagation_enabled = false
+
+  route {
+    name                   = "apim-mngm"
+    address_prefix         = "ApiManagement"
+    next_hop_type          = "Internet"
+  }
+
+  route {
+    name           = "default-apim"
+    address_prefix = "AzureCloud"
+    next_hop_type  = "Internet"
+  }
+
+  route {
+    name           = "default"
+    address_prefix = "0.0.0.0/0"
+    next_hop_type  = "VnetLocal"
+  }
+
+  tags = {
+    environment = local.prefix-hub-nva
+  }
+}
+
+resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-mgmt" {
+  subnet_id      = azurerm_subnet.spoke1-mgmt.id
+  route_table_id = azurerm_route_table.spoke1-rt.id
+  depends_on = [
+    null_resource.spoke1-subnets
+  ]
+}
+
+resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-workload" {
+  subnet_id      = azurerm_subnet.spoke1-workload.id
+  route_table_id = azurerm_route_table.spoke1-rt.id
+  depends_on = [
+    null_resource.spoke1-subnets
+  ]
+}
+
+resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-apim" {
+  subnet_id      = azurerm_subnet.spoke1-apim.id
+  route_table_id = azurerm_route_table.spoke1-rt-apim.id
+  depends_on = [
+    null_resource.spoke1-subnets
+  ]
+}
+
+# ----- peering ------
 resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
   name                      = "peer-${local.prefix-spoke1}-spoke1-hub"
   resource_group_name       = azurerm_resource_group.spoke1-vnet-rg.name
@@ -113,10 +183,10 @@ resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
 
 
 resource "azurerm_network_interface" "spoke1-nic" {
-  name                 = "nic-${local.spoke1-vmname}"
-  location             = azurerm_resource_group.spoke1-vnet-rg.location
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
-  enable_ip_forwarding = true
+  name                  = "nic-${local.spoke1-vmname}"
+  location              = azurerm_resource_group.spoke1-vnet-rg.location
+  resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name
+  ip_forwarding_enabled = true
 
   ip_configuration {
     name                          = local.prefix-spoke1
@@ -129,6 +199,7 @@ resource "azurerm_network_interface" "spoke1-nic" {
 }
 
 resource "azurerm_virtual_machine" "spoke1-vm" {
+  count                 = var.vms == "True" ? 1 : 0
   name                  = local.spoke1-vmname
   location              = azurerm_resource_group.spoke1-vnet-rg.location
   resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name

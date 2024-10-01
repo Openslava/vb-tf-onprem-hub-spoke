@@ -64,11 +64,11 @@ resource "azurerm_public_ip" "onprem-pip" {
 }
 
 resource "azurerm_network_interface" "onprem-nic" {
-  count                = var.onprem == "True" ? 1 : 0
-  name                 = "nic-${local.onprem-vmname}"
-  location             = azurerm_resource_group.onprem-rg[0].location
-  resource_group_name  = azurerm_resource_group.onprem-rg[0].name
-  enable_ip_forwarding = true
+  count                 = var.onprem == "True" ? 1 : 0
+  name                  = "nic-${local.onprem-vmname}"
+  location              = azurerm_resource_group.onprem-rg[0].location
+  resource_group_name   = azurerm_resource_group.onprem-rg[0].name
+  ip_forwarding_enabled = true
 
   ip_configuration {
     name                          = local.prefix-onprem
