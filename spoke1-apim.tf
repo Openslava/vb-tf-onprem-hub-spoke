@@ -29,7 +29,8 @@ resource "azurerm_api_management" "apim1" {
     subnet_id = azurerm_subnet.spoke1-apim.id
   }
 
-  depends_on = [azurerm_subnet.spoke1-apim, azurerm_resource_group.spoke1-rg, azurerm_network_security_group.spoke1-apim-nsg]
+  depends_on = [azurerm_subnet.spoke1-apim, azurerm_resource_group.spoke1-rg, azurerm_network_security_group.spoke1-apim-nsg,
+  azurerm_public_ip.public-ip1]
 
   # tags, introduced new Azure Policy and misaligment of tags on RGs is preventing deployment in TEST and PROD for TAGS
   lifecycle {
@@ -39,6 +40,7 @@ resource "azurerm_api_management" "apim1" {
   }
 }
 
+# https://learn.microsoft.com/en-us/azure/api-management/api-management-using-with-vnet?tabs=stv2#configure-nsg-rules
 resource "azurerm_network_security_rule" "apim1_nsg_rule0" {
   resource_group_name         = azurerm_network_security_group.spoke1-apim-nsg.resource_group_name
   network_security_group_name = azurerm_network_security_group.spoke1-apim-nsg.name
