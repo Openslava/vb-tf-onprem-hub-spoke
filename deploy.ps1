@@ -9,9 +9,10 @@ param (
     [Parameter()]
     $prefix,
     [switch]$onprem,  # by default do not deploy on prem and gateways
-    [switch]$destroy, # used to destroy the created resources
+    [switch]$destroy, # terraform destroy to delete created resources
     [switch]$apim,    # deploy apim
-    [switch]$vms      # deploy VMs  
+    [switch]$vms,     # deploy VMs 
+    [switch]$plan     # terraform plan only 
 )
 
 # $env:ARM_SKIP_PROVIDER_REGISTRATION='true'
@@ -41,7 +42,9 @@ try {
         terraform destroy
     } else {
         terraform plan -out "$($prefix).tfplan"
-        terraform apply "$($prefix).tfplan"
+        if (-not $plan) {
+            terraform apply "$($prefix).tfplan"
+        }
     }
 }
 finally {

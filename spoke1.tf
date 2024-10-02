@@ -5,7 +5,7 @@ locals {
   spoke1-vmname         = "vm${var.prefix}spoke1"
 }
 
-resource "azurerm_resource_group" "spoke1-vnet-rg" {
+resource "azurerm_resource_group" "spoke1-rg" {
   name     = local.spoke1-resource-group
   location = local.spoke1-location
 }
@@ -13,8 +13,8 @@ resource "azurerm_resource_group" "spoke1-vnet-rg" {
 # ------- VNET spoke1 ----------
 resource "azurerm_virtual_network" "spoke1-vnet" {
   name                = "vnet-${local.prefix-spoke1}"
-  location            = azurerm_resource_group.spoke1-vnet-rg.location
-  resource_group_name = azurerm_resource_group.spoke1-vnet-rg.name
+  location            = azurerm_resource_group.spoke1-rg.location
+  resource_group_name = azurerm_resource_group.spoke1-rg.name
   address_space       = ["10.1.0.0/16"]
 
   tags = {
@@ -24,36 +24,37 @@ resource "azurerm_virtual_network" "spoke1-vnet" {
 
 resource "azurerm_subnet" "spoke1-mgmt" {
   name                 = "mgmt"
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.0.64/27"]
 }
 
 resource "azurerm_subnet" "spoke1-dmz" {
   name                 = "dmz"
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.0.32/27"]
 }
 
 resource "azurerm_subnet" "spoke1-workload" {
   name                 = "workload"
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.1.0/24"]
 }
 resource "azurerm_subnet" "spoke1-azurefirewallsubnet" {
   name                 = "AzureFirewallSubnet"
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.2.0/26"]
 }
 
 resource "azurerm_subnet" "spoke1-apim" {
   name                 = "apim"
-  resource_group_name  = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.3.0/26"]
+  service_endpoints    = ["Microsoft.Storage","Microsoft.KeyVault", "Microsoft.AzureActiveDirectory", "Microsoft.Sql"]
 }
 
 resource "null_resource" "spoke1-subnets" {
@@ -70,8 +71,8 @@ resource "null_resource" "spoke1-subnets" {
 
 resource "azurerm_network_security_group" "spoke1-apim-nsg" {
   name                = "nsg-${local.prefix-spoke1}-apim"
-  location            = azurerm_resource_group.spoke1-vnet-rg.location
-  resource_group_name = azurerm_resource_group.spoke1-vnet-rg.name
+  location            = azurerm_resource_group.spoke1-rg.location
+  resource_group_name = azurerm_resource_group.spoke1-rg.name
 
   tags = {
     environment = "spoke1"
@@ -86,9 +87,9 @@ resource "azurerm_subnet_network_security_group_association" "spoke1-apim-nsg-as
 
 # ------- Route Tables spoke1 ----------
 resource "azurerm_route_table" "spoke1-rt" {
-  name                          = "rt-${local.prefix-hub-nva}-spoke1"
-  location                      = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
+  name                          = "rt-${local.prefix-spoke1}-${local.prefix-hub-nva}"
+  location                      = azurerm_resource_group.spoke1-rg.location
+  resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
 
   route {
@@ -110,9 +111,9 @@ resource "azurerm_route_table" "spoke1-rt" {
 }
 
 resource "azurerm_route_table" "spoke1-rt-apim" {
-  name                          = "rt-${local.prefix-hub-nva}-spoke1-apim"
-  location                      = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
+  name                          = "rt-${local.prefix-spoke1}-${local.prefix-hub-nva}-apim"
+  location                      = azurerm_resource_group.spoke1-rg.location
+  resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
 
   route {
@@ -121,11 +122,13 @@ resource "azurerm_route_table" "spoke1-rt-apim" {
     next_hop_type  = "Internet"
   }
 
+ /* use service endpoint instead of all 
   route {
     name           = "default-apim"
     address_prefix = "AzureCloud"
     next_hop_type  = "Internet"
   }
+  */
 
   route {
     name           = "default"
@@ -165,7 +168,7 @@ resource "azurerm_subnet_route_table_association" "spoke1-rt-spoke1-vnet-apim" {
 # ----- peering ------
 resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
   name                      = "peer-${local.prefix-spoke1}-spoke1-hub"
-  resource_group_name       = azurerm_resource_group.spoke1-vnet-rg.name
+  resource_group_name       = azurerm_resource_group.spoke1-rg.name
   virtual_network_name      = azurerm_virtual_network.spoke1-vnet.name
   remote_virtual_network_id = azurerm_virtual_network.hub-vnet.id
 
@@ -184,8 +187,8 @@ resource "azurerm_virtual_network_peering" "spoke1-hub-peer" {
 
 resource "azurerm_network_interface" "spoke1-nic" {
   name                  = "nic-${local.spoke1-vmname}"
-  location              = azurerm_resource_group.spoke1-vnet-rg.location
-  resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name
+  location              = azurerm_resource_group.spoke1-rg.location
+  resource_group_name   = azurerm_resource_group.spoke1-rg.name
   ip_forwarding_enabled = true
 
   ip_configuration {
@@ -201,8 +204,8 @@ resource "azurerm_network_interface" "spoke1-nic" {
 resource "azurerm_virtual_machine" "spoke1-vm" {
   count                 = var.vms == "True" ? 1 : 0
   name                  = local.spoke1-vmname
-  location              = azurerm_resource_group.spoke1-vnet-rg.location
-  resource_group_name   = azurerm_resource_group.spoke1-vnet-rg.name
+  location              = azurerm_resource_group.spoke1-rg.location
+  resource_group_name   = azurerm_resource_group.spoke1-rg.name
   network_interface_ids = [azurerm_network_interface.spoke1-nic.id]
   vm_size               = var.vmsize
 

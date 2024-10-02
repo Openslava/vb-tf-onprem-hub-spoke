@@ -1,33 +1,10 @@
-# define local variables
-locals {
-  resourceGroupName = "rg-${var.prefix}-apim-${var.region}"
-}
-
-# create resource group
-resource "azurerm_resource_group" "rg-apim" {
-  name     = local.resourceGroupName
-  location = var.location
-  # tags     = var.tags
-}
-
-#---------------------------
-# MS native - cytric 
-#
-# PURPOSE: APIM
-#
-# https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/api_management
-
-locals {
-  multizone = null
-}
-
 ##### Public IP Required to multizone deployment depending on var.multizone boolean variable############################
 
-resource "azurerm_public_ip" "public-ip" {
+resource "azurerm_public_ip" "public-ip1" {
   count               = var.apim == "True" ? 1 : 0
-  name                = "apim-${var.prefix}-feip"
-  location            = azurerm_resource_group.rg-apim.location
-  resource_group_name = azurerm_resource_group.rg-apim.name
+  name                = "apim-${var.prefix}-spoke1-feip1"
+  location            = azurerm_resource_group.spoke1-rg.location
+  resource_group_name = azurerm_resource_group.spoke1-rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
   domain_name_label   = "apim-${var.prefix}"
@@ -35,24 +12,24 @@ resource "azurerm_public_ip" "public-ip" {
 
 ##### Conditional multizone deployment depending on var.multizone boolean variable#########################################
 
-resource "azurerm_api_management" "apim" {
+resource "azurerm_api_management" "apim1" {
   count                = var.apim == "True" ? 1 : 0
-  name                 = "apim-${var.prefix}"
-  location             = azurerm_resource_group.rg-apim.location
-  resource_group_name  = azurerm_resource_group.rg-apim.name
-  publisher_name       = "vb"
-  publisher_email      = "viliam@batka.name"
+  name                 = "apim-${var.prefix}-spoke1"
+  location             = azurerm_resource_group.spoke1-rg.location
+  resource_group_name  = azurerm_resource_group.spoke1-rg.name
+  publisher_name       = "test"
+  publisher_email      = "test@test.com"
   sku_name             = "Developer_1"
   virtual_network_type = "Internal"
   zones                = null
-  public_ip_address_id = azurerm_public_ip.public-ip[count.index].id
+  public_ip_address_id = azurerm_public_ip.public-ip1[count.index].id
 
 
   virtual_network_configuration {
     subnet_id = azurerm_subnet.spoke1-apim.id
   }
 
-  depends_on = [azurerm_subnet.spoke1-apim, azurerm_resource_group.rg-apim]
+  depends_on = [azurerm_subnet.spoke1-apim, azurerm_resource_group.spoke1-rg]
 
   # tags, introduced new Azure Policy and misaligment of tags on RGs is preventing deployment in TEST and PROD for TAGS
   lifecycle {
@@ -71,7 +48,7 @@ resource "azurerm_network_security_rule" "apim_nsg_rule0" {
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  source_address_prefix       = "*"
+  source_address_prefix       = "VirtualNetwork"
   destination_port_ranges     = ["443", "80", "22"]
   destination_address_prefix  = "VirtualNetwork"
 }
