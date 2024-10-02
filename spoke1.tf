@@ -49,7 +49,7 @@ resource "azurerm_subnet" "spoke1-azurefirewallsubnet" {
   address_prefixes     = ["10.1.2.0/26"]
 }
 
-https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview
+# https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview
 resource "azurerm_subnet" "spoke1-apim" {
   name                 = "apim"
   resource_group_name  = azurerm_resource_group.spoke1-rg.name
