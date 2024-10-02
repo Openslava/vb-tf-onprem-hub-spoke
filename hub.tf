@@ -6,15 +6,15 @@ locals {
   shared-key         = "6-v1ry-86cr37-1a84c-5s4r3d-q3z"
 }
 
-resource "azurerm_resource_group" "hub-vnet-rg" {
+resource "azurerm_resource_group" "hub-rg" {
   name     = local.hub-resource-group
   location = local.hub-location
 }
 
 resource "azurerm_virtual_network" "hub-vnet" {
   name                = "vnet-${local.prefix-hub}"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
   address_space       = ["10.0.0.0/16"]
 
   tags = {
@@ -24,42 +24,42 @@ resource "azurerm_virtual_network" "hub-vnet" {
 
 resource "azurerm_subnet" "hub-gateway-subnet" {
   name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.255.224/27"]
 }
 
 resource "azurerm_subnet" "hub-mgmt" {
   name                 = "mgmt"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.0.64/27"]
 }
 
 resource "azurerm_subnet" "hub-dmz" {
   name                 = "dmz"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.0.32/27"]
 }
 
 resource "azurerm_subnet" "hub-azurefirewallsubnet" {
   name                 = "AzureFirewallSubnet"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.1.0/26"]
 }
 
 resource "azurerm_subnet" "hub-azurebastionsubnet" {
   name                 = "AzureBastionSubnet"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
 resource "azurerm_subnet" "hub-apim" {
   name                 = "apim"
-  resource_group_name  = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
   address_prefixes     = ["10.0.3.0/26"]
 }
@@ -76,8 +76,8 @@ resource "null_resource" "hub-subnets" {
 
 resource "azurerm_network_security_group" "hub-nsg" {
   name                = "nsg-${local.prefix-hub}"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
 
   # allow any inbound trafic to HUB (jumpbox)
   security_rule {
@@ -116,8 +116,8 @@ resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-associ
 
 resource "azurerm_public_ip" "hub-pip" {
   name                = "pip-${local.hub-vmname}"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
 
@@ -128,8 +128,8 @@ resource "azurerm_public_ip" "hub-pip" {
 
 resource "azurerm_network_interface" "hub-nic" {
   name                  = "nic-${local.hub-vmname}"
-  location              = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
+  location              = azurerm_resource_group.hub-rg.location
+  resource_group_name   = azurerm_resource_group.hub-rg.name
   ip_forwarding_enabled = true
 
   ip_configuration {
@@ -152,8 +152,8 @@ resource "azurerm_network_interface" "hub-nic" {
 resource "azurerm_virtual_machine" "hub-vm" {
   count                 = var.vms == "True" ? 1 : 0
   name                  = local.hub-vmname
-  location              = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name   = azurerm_resource_group.hub-vnet-rg.name
+  location              = azurerm_resource_group.hub-rg.location
+  resource_group_name   = azurerm_resource_group.hub-rg.name
   network_interface_ids = [azurerm_network_interface.hub-nic.id]
   vm_size               = var.vmsize
 
@@ -194,8 +194,8 @@ resource "azurerm_virtual_machine" "hub-vm" {
 resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
   count               = var.onprem == "True" ? 1 : 0
   name                = "pip-${local.prefix-hub}-vpn-gateway"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
 
   allocation_method = "Dynamic"
 }
@@ -203,8 +203,8 @@ resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
 resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
   count               = var.onprem == "True" ? 1 : 0
   name                = "vgw-${local.prefix-hub}"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
 
   type     = "Vpn"
   vpn_type = "RouteBased"
@@ -228,8 +228,8 @@ resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
 resource "azurerm_virtual_network_gateway_connection" "hub-onprem-conn" {
   count               = var.onprem == "True" ? 1 : 0
   name                = "conn-${var.prefix}-hub-onprem"
-  location            = azurerm_resource_group.hub-vnet-rg.location
-  resource_group_name = azurerm_resource_group.hub-vnet-rg.name
+  location            = azurerm_resource_group.hub-rg.location
+  resource_group_name = azurerm_resource_group.hub-rg.name
 
   type           = "Vnet2Vnet"
   routing_weight = 1

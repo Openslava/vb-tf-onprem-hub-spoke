@@ -54,7 +54,7 @@ resource "azurerm_subnet" "spoke1-apim" {
   resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.3.0/26"]
-  service_endpoints    = ["Microsoft.Storage","Microsoft.KeyVault", "Microsoft.AzureActiveDirectory", "Microsoft.Sql"]
+  service_endpoints    = ["Microsoft.Storage","Microsoft.KeyVault", "Microsoft.AzureActiveDirectory", "Microsoft.Sql", "Microsoft.CognitiveServices"]
 }
 
 resource "null_resource" "spoke1-subnets" {
@@ -87,7 +87,7 @@ resource "azurerm_subnet_network_security_group_association" "spoke1-apim-nsg-as
 
 # ------- Route Tables spoke1 ----------
 resource "azurerm_route_table" "spoke1-rt" {
-  name                          = "rt-${local.prefix-spoke1}-${local.prefix-hub-nva}"
+  name                          = "rt-${local.prefix-spoke1}"
   location                      = azurerm_resource_group.spoke1-rg.location
   resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
@@ -111,7 +111,7 @@ resource "azurerm_route_table" "spoke1-rt" {
 }
 
 resource "azurerm_route_table" "spoke1-rt-apim" {
-  name                          = "rt-${local.prefix-spoke1}-${local.prefix-hub-nva}-apim"
+  name                          = "rt-${local.prefix-spoke1}-apim"
   location                      = azurerm_resource_group.spoke1-rg.location
   resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
@@ -244,7 +244,7 @@ resource "azurerm_virtual_machine" "spoke1-vm" {
 
 resource "azurerm_virtual_network_peering" "hub-spoke1-peer" {
   name                         = "peer-${var.prefix}-hub-spoke1"
-  resource_group_name          = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name          = azurerm_resource_group.hub-rg.name
   virtual_network_name         = azurerm_virtual_network.hub-vnet.name
   remote_virtual_network_id    = azurerm_virtual_network.spoke1-vnet.id
   allow_virtual_network_access = true
