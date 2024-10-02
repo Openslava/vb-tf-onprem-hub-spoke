@@ -60,7 +60,7 @@ resource "azurerm_network_security_group" "spoke2-apim-nsg" {
 }
 
 resource "azurerm_route_table" "spoke2-rt" {
-  name                          = "rt-${local.prefix-hub-nva}-spoke2"
+  name                          = "rt-${local.prefix-spoke2}"
   location                      = azurerm_resource_group.spoke2-rg.location
   resource_group_name           = azurerm_resource_group.spoke2-rg.name
   bgp_route_propagation_enabled = false
@@ -84,7 +84,7 @@ resource "azurerm_route_table" "spoke2-rt" {
 }
 
 resource "azurerm_route_table" "spoke2-rt-apim" {
-  name                          = "rt-${local.prefix-spoke2}-${local.prefix-hub-nva}-apim"
+  name                          = "rt-${local.prefix-spoke2}-apim"
   location                      = azurerm_resource_group.spoke2-rg.location
   resource_group_name           = azurerm_resource_group.spoke2-rg.name
   bgp_route_propagation_enabled = false
@@ -224,7 +224,7 @@ resource "azurerm_virtual_machine" "spoke2-vm" {
 
 resource "azurerm_virtual_network_peering" "hub-spoke2-peer" {
   name                         = "peer-${var.prefix}-hub-spoke2"
-  resource_group_name          = azurerm_resource_group.hub-vnet-rg.name
+  resource_group_name          = azurerm_resource_group.hub-rg.name
   virtual_network_name         = azurerm_virtual_network.hub-vnet.name
   remote_virtual_network_id    = azurerm_virtual_network.spoke2-vnet.id
   allow_virtual_network_access = true
