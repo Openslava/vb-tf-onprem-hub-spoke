@@ -79,6 +79,7 @@ resource "azurerm_network_security_group" "hub-nsg" {
   location            = azurerm_resource_group.hub-vnet-rg.location
   resource_group_name = azurerm_resource_group.hub-vnet-rg.name
 
+  # allow any inbound trafic to HUB (jumpbox)
   security_rule {
     name                       = "Any"
     priority                   = 1001
