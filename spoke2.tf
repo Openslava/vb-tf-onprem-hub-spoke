@@ -130,7 +130,7 @@ resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-workloa
 
 resource "azurerm_subnet_route_table_association" "spoke2-rt-spoke2-vnet-apim" {
   subnet_id      = azurerm_subnet.spoke2-apim.id
-  route_table_id = azurerm_route_table.spoke2-rt.id
+  route_table_id = azurerm_route_table.spoke2-rt-apim.id
   depends_on = [
     null_resource.spoke2-subnets
   ]
