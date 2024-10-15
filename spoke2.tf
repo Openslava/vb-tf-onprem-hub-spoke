@@ -83,6 +83,8 @@ resource "azurerm_route_table" "spoke2-rt" {
   }
 }
 
+# service tags https://learn.microsoft.com/en-us/azure/virtual-network/service-tags-overview
+# setup apim subnet wihtout service endpoint require routing tables
 resource "azurerm_route_table" "spoke2-rt-apim" {
   name                          = "rt-${local.prefix-spoke2}-apim"
   location                      = azurerm_resource_group.spoke2-rg.location
@@ -95,16 +97,62 @@ resource "azurerm_route_table" "spoke2-rt-apim" {
     next_hop_type  = "Internet"
   }
 
+  # local vnet hop 
+  route {
+    name           = "default"
+    address_prefix = "0.0.0.0/0"
+    next_hop_type  = "VnetLocal"
+  }
+
+
+  # this one or all below
+  /*
   route {
     name           = "default-apim"
     address_prefix = "AzureCloud"
     next_hop_type  = "Internet"
   }
+  */
 
   route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "VnetLocal"
+    name           = "default-apim"
+    address_prefix = "Sql"
+    next_hop_type  = "Internet"
+  }
+
+  # instead of Service end point
+  route {
+    name           = "default-apim"
+    address_prefix = "AzureActiveDirectory"
+    next_hop_type  = "Internet"
+  }
+
+  # instead of Service end point 
+  route {
+    name           = "default-apim"
+    address_prefix = "AzureKeyVault"
+    next_hop_type  = "Internet"
+  }
+
+  # instead of Service end point
+  route {
+    name           = "default-apim"
+    address_prefix = "Storage"
+    next_hop_type  = "Internet"
+  }
+
+  # instead of Service end point
+  route {
+    name           = "default-apim"
+    address_prefix = "EventHub"
+    next_hop_type  = "Internet"
+  }
+
+  # instead of Service end point
+  route {
+    name           = "default-apim"
+    address_prefix = "ServiceBus"
+    next_hop_type  = "Internet"
   }
 
   tags = {
