@@ -62,8 +62,12 @@ _peering_
 
 ## destroy all created resources 
 ```powershell
-    # delete all resources persisted in state file on local machine
+    # delete current deployment from current workspace,  all resources persisted in state file on local machine
     terraform destroy
+
+    # if various instances exist 
+    ./deploy.ps1 -prefix vb07 -apim -vms -destroy
+
 ```
 
 ## run command on VM's

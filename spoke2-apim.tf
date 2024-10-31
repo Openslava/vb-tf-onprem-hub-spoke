@@ -31,7 +31,7 @@ resource "azurerm_api_management" "apim2" {
   }
 
   depends_on = [azurerm_subnet.spoke2-apim, azurerm_resource_group.spoke2-rg, azurerm_network_security_group.spoke2-apim-nsg,
-  azurerm_public_ip.public-ip2]
+  azurerm_public_ip.public-ip2, null_resource.spoke2-nsg_rules]
 
   # tags, introduced new Azure Policy and misaligment of tags on RGs is preventing deployment in TEST and PROD for TAGS
   lifecycle {
@@ -39,6 +39,15 @@ resource "azurerm_api_management" "apim2" {
       tags
     ]
   }
+}
+
+resource "null_resource" "spoke2-nsg_rules" {
+  depends_on = [
+    azurerm_network_security_rule.apim2_nsg_rule0,
+    azurerm_network_security_rule.apim2_nsg_rule1,
+    azurerm_network_security_rule.apim2_nsg_rule2,
+    azurerm_network_security_rule.apim2_nsg_rule3
+  ]
 }
 
 resource "azurerm_network_security_rule" "apim2_nsg_rule0" {
@@ -53,6 +62,7 @@ resource "azurerm_network_security_rule" "apim2_nsg_rule0" {
   source_address_prefix       = "VirtualNetwork"
   destination_port_ranges     = ["443", "80", "22"]
   destination_address_prefix  = "VirtualNetwork"
+  depends_on                  = [azurerm_network_security_group.spoke2-apim-nsg]
 }
 
 resource "azurerm_network_security_rule" "apim2_nsg_rule1" {

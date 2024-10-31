@@ -104,16 +104,6 @@ resource "azurerm_route_table" "spoke2-rt-apim" {
     next_hop_type  = "VnetLocal"
   }
 
-
-  # this one or all below
-  /*
-  route {
-    name           = "default-apim"
-    address_prefix = "AzureCloud"
-    next_hop_type  = "Internet"
-  }
-  */
-
   route {
     name           = "default-apim"
     address_prefix = "Sql"

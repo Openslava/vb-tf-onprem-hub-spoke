@@ -50,12 +50,13 @@ resource "azurerm_subnet" "spoke1-azurefirewallsubnet" {
 }
 
 # https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview
+# no service endpoints only service tag on subnet
 resource "azurerm_subnet" "spoke1-apim" {
   name                 = "apim"
   resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
   address_prefixes     = ["10.1.3.0/26"]
-  service_endpoints    = ["Microsoft.Storage", "Microsoft.KeyVault", "Microsoft.AzureActiveDirectory", "Microsoft.Sql", "Microsoft.CognitiveServices", "Microsoft.EventHub", "Microsoft.ServiceBus"]
+  # service_endpoints    =  ["Microsoft.Storage", "Microsoft.KeyVault", "Microsoft.AzureActiveDirectory", "Microsoft.Sql", "Microsoft.CognitiveServices", "Microsoft.EventHub", "Microsoft.ServiceBus"]
 }
 
 resource "null_resource" "spoke1-subnets" {
@@ -118,25 +119,13 @@ resource "azurerm_route_table" "spoke1-rt-apim" {
   resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
 
-  route {
-    name           = "apim-mngm"
-    address_prefix = "ApiManagement"
-    next_hop_type  = "Internet"
-  }
-
-  /* use service endpoint instead of all 
+  # use service endpoint instead of all 
   route {
     name           = "default-apim"
     address_prefix = "AzureCloud"
     next_hop_type  = "Internet"
   }
-  */
 
-  route {
-    name           = "default-apim"
-    address_prefix = "AzureMonitor"
-    next_hop_type  = "Internet"
-  }
 
   route {
     name           = "default"
