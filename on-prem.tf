@@ -22,33 +22,20 @@ resource "azurerm_virtual_network" "onprem-vnet" {
   resource_group_name = azurerm_resource_group.onprem-rg[0].name
   address_space       = ["192.168.0.0/16"]
 
+  subnet {
+    name             = "GatewaySubnet"
+    address_prefixes = ["192.168.255.224/27"]
+  }
+
+  subnet {
+    name             = "mgmt"
+    address_prefixes = ["192.168.1.128/25"]
+    security_group   = azurerm_network_security_group.onprem-nsg[0].id
+  }
+
   tags = {
     environment = local.prefix-onprem
   }
-}
-
-resource "azurerm_subnet" "onprem-gateway-subnet" {
-  count                = var.onprem == "True" ? 1 : 0
-  name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.onprem-rg[0].name
-  virtual_network_name = azurerm_virtual_network.onprem-vnet[0].name
-  address_prefixes     = ["192.168.255.224/27"]
-}
-
-resource "azurerm_subnet" "onprem-mgmt" {
-  count                = var.onprem == "True" ? 1 : 0
-  name                 = "mgmt"
-  resource_group_name  = azurerm_resource_group.onprem-rg[0].name
-  virtual_network_name = azurerm_virtual_network.onprem-vnet[0].name
-  address_prefixes     = ["192.168.1.128/25"]
-}
-
-resource "null_resource" "onprem-subnets" {
-  count = var.onprem == "True" ? 1 : 0
-  depends_on = [
-    azurerm_subnet.onprem-gateway-subnet,
-    azurerm_subnet.onprem-mgmt
-  ]
 }
 
 resource "azurerm_public_ip" "onprem-pip" {
@@ -63,6 +50,23 @@ resource "azurerm_public_ip" "onprem-pip" {
   }
 }
 
+data "azurerm_subnet" "onprem-mgmt" {
+  count                = var.onprem == "True" ? 1 : 0
+  name                 = "mgmt"
+  resource_group_name  = azurerm_resource_group.onprem-rg[0].name
+  virtual_network_name = azurerm_virtual_network.onprem-vnet[0].name
+  depends_on           = [azurerm_virtual_network.onprem-vnet]
+}
+
+data "azurerm_subnet" "onprem-gateway-subnet" {
+  count                = var.onprem == "True" ? 1 : 0
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.onprem-rg[0].name
+  virtual_network_name = azurerm_virtual_network.onprem-vnet[0].name
+  depends_on           = [azurerm_virtual_network.onprem-vnet]
+}
+
+
 resource "azurerm_network_interface" "onprem-nic" {
   count                 = var.onprem == "True" ? 1 : 0
   name                  = "nic-${local.onprem-vmname}"
@@ -72,12 +76,12 @@ resource "azurerm_network_interface" "onprem-nic" {
 
   ip_configuration {
     name                          = local.prefix-onprem
-    subnet_id                     = azurerm_subnet.onprem-mgmt[0].id
+    subnet_id                     = data.azurerm_subnet.onprem-mgmt[0].id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.onprem-pip[0].id
   }
   depends_on = [
-    null_resource.onprem-subnets,
+    azurerm_virtual_network.onprem-vnet,
     azurerm_public_ip.onprem-pip
   ]
 }
@@ -104,12 +108,6 @@ resource "azurerm_network_security_group" "onprem-nsg" {
   tags = {
     environment = "onprem"
   }
-}
-
-resource "azurerm_subnet_network_security_group_association" "mgmt-nsg-association" {
-  count                     = var.onprem == "True" ? 1 : 0
-  subnet_id                 = azurerm_subnet.onprem-mgmt[0].id
-  network_security_group_id = azurerm_network_security_group.onprem-nsg[0].id
 }
 
 resource "azurerm_virtual_machine" "onprem-vm" {
@@ -178,11 +176,11 @@ resource "azurerm_virtual_network_gateway" "onprem-vpn-gateway" {
     name                          = "vnetGatewayConfig"
     public_ip_address_id          = azurerm_public_ip.onprem-vpn-gateway1-pip[0].id
     private_ip_address_allocation = "Dynamic"
-    subnet_id                     = azurerm_subnet.onprem-gateway-subnet[0].id
+    subnet_id                     = data.azurerm_subnet.onprem-gateway-subnet[0].id
   }
   depends_on = [
     azurerm_public_ip.onprem-vpn-gateway1-pip,
-    null_resource.onprem-subnets
+    azurerm_virtual_network.onprem-vnet
   ]
 
 }
