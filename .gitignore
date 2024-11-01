@@ -11,6 +11,7 @@ Sign up
 github
 /
 gitignore
+**/bin/*
 
 .terraform.lock.hcl
 *.tfplan

@@ -14,6 +14,13 @@ resource "azurerm_resource_group" "hub-nva-rg" {
   }
 }
 
+data "azurerm_subnet" "hub-dmz" {
+  name                 = "dmz"
+  resource_group_name  = azurerm_resource_group.hub-rg.name
+  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  depends_on = [ azurerm_virtual_network.hub-vnet ]
+}
+
 resource "azurerm_network_interface" "hub-nva-nic" {
   name                  = "nic-${local.hub-nva-vmname}"
   location              = azurerm_resource_group.hub-nva-rg.location
@@ -22,7 +29,7 @@ resource "azurerm_network_interface" "hub-nva-nic" {
 
   ip_configuration {
     name                          = local.prefix-hub-nva
-    subnet_id                     = azurerm_subnet.hub-dmz.id
+    subnet_id                     = data.azurerm_subnet.hub-dmz.id
     private_ip_address_allocation = "Static"
     private_ip_address            = "10.0.0.36"
   }
@@ -31,7 +38,7 @@ resource "azurerm_network_interface" "hub-nva-nic" {
     environment = local.prefix-hub-nva
   }
   depends_on = [
-    azurerm_subnet.hub-dmz
+    data.azurerm_subnet.hub-dmz
   ]
 }
 
@@ -97,41 +104,4 @@ resource "azurerm_virtual_machine_extension" "enable-routes" {
   }
 }
 
-resource "azurerm_route_table" "hub-gateway-rt" {
-  name                          = "rt-${local.prefix-hub-nva}-hub-gateway"
-  location                      = azurerm_resource_group.hub-nva-rg.location
-  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
-  bgp_route_propagation_enabled = false
 
-  route {
-    name           = "toHub"
-    address_prefix = "10.0.0.0/16"
-    next_hop_type  = "VnetLocal"
-  }
-
-  route {
-    name                   = "toSpoke1"
-    address_prefix         = "10.1.0.0/16"
-    next_hop_type          = "VirtualAppliance"
-    next_hop_in_ip_address = "10.0.0.36"
-  }
-
-  route {
-    name                   = "toSpoke2"
-    address_prefix         = "10.2.0.0/16"
-    next_hop_type          = "VirtualAppliance"
-    next_hop_in_ip_address = "10.0.0.36"
-  }
-
-  tags = {
-    environment = local.prefix-hub-nva
-  }
-}
-
-resource "azurerm_subnet_route_table_association" "hub-gateway-rt-hub-vnet-gateway-subnet" {
-  subnet_id      = azurerm_subnet.hub-gateway-subnet.id
-  route_table_id = azurerm_route_table.hub-gateway-rt.id
-  depends_on = [
-    null_resource.hub-subnets
-  ]
-}

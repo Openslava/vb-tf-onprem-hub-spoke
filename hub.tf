@@ -6,10 +6,47 @@ locals {
   shared-key         = "6-v1ry-86cr37-1a84c-5s4r3d-q3z"
 }
 
+
 resource "azurerm_resource_group" "hub-rg" {
   name     = local.hub-resource-group
   location = local.hub-location
 }
+
+
+# --- route tables --- 
+
+resource "azurerm_route_table" "hub-gateway-rt" {
+  name                          = "rt-${local.prefix-hub-nva}-hub-gateway"
+  location                      = azurerm_resource_group.hub-nva-rg.location
+  resource_group_name           = azurerm_resource_group.hub-nva-rg.name
+  bgp_route_propagation_enabled = false
+
+  route {
+    name           = "toHub"
+    address_prefix = "10.0.0.0/16"
+    next_hop_type  = "VnetLocal"
+  }
+
+  route {
+    name                   = "toSpoke1"
+    address_prefix         = "10.1.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = "10.0.0.36"
+  }
+
+  route {
+    name                   = "toSpoke2"
+    address_prefix         = "10.2.0.0/16"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = "10.0.0.36"
+  }
+
+  tags = {
+    environment = local.prefix-hub-nva
+  }
+}
+
+# --- VNET --- 
 
 resource "azurerm_virtual_network" "hub-vnet" {
   name                = "vnet-${local.prefix-hub}"
@@ -17,62 +54,44 @@ resource "azurerm_virtual_network" "hub-vnet" {
   resource_group_name = azurerm_resource_group.hub-rg.name
   address_space       = ["10.0.0.0/16"]
 
+  subnet {
+    name             = "GatewaySubnet"
+    address_prefixes = ["10.0.255.224/27"]
+    route_table_id = azurerm_route_table.hub-gateway-rt.id
+  }
+
+  subnet {
+    name             = "mgmt"
+    address_prefixes = ["10.0.0.64/27"]
+  }
+
+  subnet {
+    name             = "dmz"
+    address_prefixes = ["10.0.0.32/27"]
+    security_group   = azurerm_network_security_group.hub-nsg.id
+  }
+
+  subnet {
+    name             = "AzureFirewallSubnet"
+    address_prefixes = ["10.0.1.0/26"]
+  }
+
+  subnet {
+    name             = "AzureBastionSubnet"
+    address_prefixes = ["10.0.2.0/24"]
+  }
+
+  subnet {
+    name             = "apim"
+    address_prefixes = ["10.0.3.0/26"]
+    security_group   = azurerm_network_security_group.hub-nsg.id
+  }
+
   tags = {
     environment = "hub-spoke"
   }
 }
 
-resource "azurerm_subnet" "hub-gateway-subnet" {
-  name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.255.224/27"]
-}
-
-resource "azurerm_subnet" "hub-mgmt" {
-  name                 = "mgmt"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.0.64/27"]
-}
-
-resource "azurerm_subnet" "hub-dmz" {
-  name                 = "dmz"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.0.32/27"]
-}
-
-resource "azurerm_subnet" "hub-azurefirewallsubnet" {
-  name                 = "AzureFirewallSubnet"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.1.0/26"]
-}
-
-resource "azurerm_subnet" "hub-azurebastionsubnet" {
-  name                 = "AzureBastionSubnet"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.2.0/24"]
-}
-
-resource "azurerm_subnet" "hub-apim" {
-  name                 = "apim"
-  resource_group_name  = azurerm_resource_group.hub-rg.name
-  virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  address_prefixes     = ["10.0.3.0/26"]
-}
-
-resource "null_resource" "hub-subnets" {
-  depends_on = [
-    azurerm_subnet.hub-apim,
-    azurerm_subnet.hub-azurebastionsubnet,
-    azurerm_subnet.hub-dmz,
-    azurerm_subnet.hub-gateway-subnet,
-    azurerm_subnet.hub-mgmt
-  ]
-}
 
 resource "azurerm_network_security_group" "hub-nsg" {
   name                = "nsg-${local.prefix-hub}"
@@ -97,23 +116,6 @@ resource "azurerm_network_security_group" "hub-nsg" {
   }
 }
 
-resource "azurerm_subnet_network_security_group_association" "hub-apim-nsg-association" {
-  subnet_id                 = azurerm_subnet.hub-apim.id
-  network_security_group_id = azurerm_network_security_group.hub-nsg.id
-  depends_on = [
-    null_resource.hub-subnets,
-  azurerm_network_security_group.hub-nsg]
-}
-
-resource "azurerm_subnet_network_security_group_association" "hub-dmz-nsg-association" {
-  subnet_id                 = azurerm_subnet.hub-dmz.id
-  network_security_group_id = azurerm_network_security_group.hub-nsg.id
-  depends_on = [
-    null_resource.hub-subnets,
-    azurerm_network_security_group.hub-nsg
-  ]
-}
-
 resource "azurerm_public_ip" "hub-pip" {
   name                = "pip-${local.hub-vmname}"
   location            = azurerm_resource_group.hub-rg.location
@@ -126,6 +128,14 @@ resource "azurerm_public_ip" "hub-pip" {
   }
 }
 
+
+data "azurerm_subnet" "hub-mgmt" {
+  name                 = "mgmt"
+  resource_group_name  = azurerm_resource_group.hub-rg.name
+  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  depends_on = [ azurerm_virtual_network.hub-vnet ]
+}
+
 resource "azurerm_network_interface" "hub-nic" {
   name                  = "nic-${local.hub-vmname}"
   location              = azurerm_resource_group.hub-rg.location
@@ -134,7 +144,7 @@ resource "azurerm_network_interface" "hub-nic" {
 
   ip_configuration {
     name                          = local.prefix-hub
-    subnet_id                     = azurerm_subnet.hub-mgmt.id
+    subnet_id                     = data.azurerm_subnet.hub-mgmt.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.hub-pip.id
   }
@@ -143,10 +153,11 @@ resource "azurerm_network_interface" "hub-nic" {
     environment = local.prefix-hub
   }
   depends_on = [
-    null_resource.hub-subnets,
+    azurerm_virtual_network.hub-vnet,
     azurerm_public_ip.hub-pip
   ]
 }
+
 
 #Virtual Machine
 resource "azurerm_virtual_machine" "hub-vm" {
@@ -200,6 +211,13 @@ resource "azurerm_public_ip" "hub-vpn-gateway1-pip" {
   allocation_method = "Dynamic"
 }
 
+data "azurerm_subnet" "hub-gateway-subnet" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.hub-rg.name
+  virtual_network_name = azurerm_virtual_network.hub-vnet.name
+  depends_on = [ azurerm_virtual_network.hub-vnet ]
+}
+
 resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
   count               = var.onprem == "True" ? 1 : 0
   name                = "vgw-${local.prefix-hub}"
@@ -217,11 +235,11 @@ resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
     name                          = "vnetGatewayConfig"
     public_ip_address_id          = azurerm_public_ip.hub-vpn-gateway1-pip[0].id
     private_ip_address_allocation = "Dynamic"
-    subnet_id                     = azurerm_subnet.hub-gateway-subnet.id
+    subnet_id                     = data.azurerm_subnet.hub-gateway-subnet.id
   }
   depends_on = [
     azurerm_public_ip.hub-vpn-gateway1-pip,
-    null_resource.hub-subnets
+    azurerm_virtual_network.hub-vnet
   ]
 }
 

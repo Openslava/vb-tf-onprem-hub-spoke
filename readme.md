@@ -14,6 +14,7 @@ some of the user scenarios
 
 - VNET - on-prem, hub, 2 x spoke
 - VM - vmhub, vbspoke1, vmspoke2, vmonprem
+- APIM in skope1 and spoke2
 - URD - from spoke to vmhub
 
 _peering_
@@ -40,6 +41,17 @@ _peering_
 
 ## quickstart first deployment
 
+available deploy.ps1 switches 
+-  -onprem  - by default do not deploy on prem and gateways
+-  -destroy - terraform destroy to delete created resources
+-  -apim    - deploy apim
+-  -vms     - deploy VMs 
+-  -plan    - terraform plan only 
+-  -graph   - terraform grapth only
+
+by default 'terraform apply'  will be used 
+
+
 ```powershell
     # login to azure and set the context to target subscription
     az login  # or: az login --tenant  [tenant id]
@@ -50,8 +62,7 @@ _peering_
     .\deploy.ps1 -prefix test01
 
     # deploy onprem + hub + spoke1 + spoke2 
-    .\deploy.ps1 -onprem -prefix test01 
-
+    .\deploy.ps1 -onprem -prefix test01
 
     # deploy - network and apim only
     ./deploy.ps1 -prefix vb07 -apim
@@ -74,7 +85,7 @@ _peering_
 
 Via azure portal on respective VM run is possible ro run shell command. or via SSH on Jumpbox thta have public IP e.g. in hub.
 
-here is list of some of hte usefull commands 
+here is list of some of the usefull commands 
 
 ```bash
     # update ubuntu

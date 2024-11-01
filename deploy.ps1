@@ -12,7 +12,8 @@ param (
     [switch]$destroy, # terraform destroy to delete created resources
     [switch]$apim,    # deploy apim
     [switch]$vms,     # deploy VMs 
-    [switch]$plan     # terraform plan only 
+    [switch]$plan,    # terraform plan only 
+    [switch]$graph    # terraform grapth only
 )
 
 # $env:ARM_SKIP_PROVIDER_REGISTRATION='true'
@@ -40,6 +41,16 @@ try {
     
     if($destroy) {
         terraform destroy
+    } elseif ($graph) {
+        if (-not $plan) {
+            terraform graph -type=apply >bin/grapth_apply_$prefix.dot
+            echo  grapth_apply_$prefix.dot
+            cat  grapth_apply_$prefix.dot
+        } else {
+            terraform graph -type=plan  >bin/grapth_plan_$prefix.dot
+            echo grapth_plan_$prefix.dot
+            cat  grapth_plan_$prefix.dot
+        }
     } else {
         terraform plan -out "$($prefix).tfplan"
         if (-not $plan) {

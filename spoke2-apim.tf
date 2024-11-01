@@ -11,6 +11,14 @@ resource "azurerm_public_ip" "public-ip2" {
   domain_name_label   = "apim2-${var.prefix}"
 }
 
+
+data "azurerm_subnet" "spoke2-apim" {
+  name                 = "apim"
+  resource_group_name  = azurerm_resource_group.spoke2-rg.name
+  virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
+  depends_on           = [azurerm_virtual_network.spoke2-vnet]
+}
+
 ##### Conditional multizone deployment depending on var.multizone boolean variable#########################################
 
 resource "azurerm_api_management" "apim2" {
@@ -27,11 +35,10 @@ resource "azurerm_api_management" "apim2" {
 
 
   virtual_network_configuration {
-    subnet_id = azurerm_subnet.spoke2-apim.id
+    subnet_id = data.azurerm_subnet.spoke2-apim.id
   }
 
-  depends_on = [azurerm_subnet.spoke2-apim, azurerm_resource_group.spoke2-rg, azurerm_network_security_group.spoke2-apim-nsg,
-  azurerm_public_ip.public-ip2, null_resource.spoke2-nsg_rules]
+  depends_on = [data.azurerm_subnet.spoke2-apim, azurerm_resource_group.spoke2-rg, azurerm_public_ip.public-ip2]
 
   # tags, introduced new Azure Policy and misaligment of tags on RGs is preventing deployment in TEST and PROD for TAGS
   lifecycle {
@@ -41,74 +48,62 @@ resource "azurerm_api_management" "apim2" {
   }
 }
 
-resource "null_resource" "spoke2-nsg_rules" {
-  depends_on = [
-    azurerm_network_security_rule.apim2_nsg_rule0,
-    azurerm_network_security_rule.apim2_nsg_rule1,
-    azurerm_network_security_rule.apim2_nsg_rule2,
-    azurerm_network_security_rule.apim2_nsg_rule3
-  ]
+# --- NSGs ---
+
+resource "azurerm_network_security_group" "spoke2-apim-nsg" {
+  name                = "nsg-${local.prefix-spoke2}-apim"
+  location            = azurerm_resource_group.spoke2-rg.location
+  resource_group_name = azurerm_resource_group.spoke2-rg.name
+
+  security_rule {
+    name                       = "general-ports"
+    priority                   = 4094
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_port_ranges    = ["443", "80", "22"]
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "AllowAPIMManagementEndpoint"
+    priority                   = 4093
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    source_address_prefix      = "ApiManagement"
+    destination_port_ranges    = ["3443"]
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "Allow-All-LoadBalancer-Inbound"
+    priority                   = 4095
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_port_range     = "*"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                   = "Block-All-Traffic"
+    priority               = 4096
+    direction              = "Inbound"
+    access                 = "Deny"
+    protocol               = "*"
+    source_port_range      = "*"
+    source_address_prefix  = "*"
+    destination_port_range = "*"
+  }
+
+  tags = {
+    environment = "spoke2"
+  }
 }
-
-resource "azurerm_network_security_rule" "apim2_nsg_rule0" {
-  resource_group_name         = azurerm_network_security_group.spoke2-apim-nsg.resource_group_name
-  network_security_group_name = azurerm_network_security_group.spoke2-apim-nsg.name
-  name                        = "general-ports"
-  priority                    = 4094
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  source_address_prefix       = "VirtualNetwork"
-  destination_port_ranges     = ["443", "80", "22"]
-  destination_address_prefix  = "VirtualNetwork"
-  depends_on                  = [azurerm_network_security_group.spoke2-apim-nsg]
-}
-
-resource "azurerm_network_security_rule" "apim2_nsg_rule1" {
-  resource_group_name         = azurerm_network_security_group.spoke2-apim-nsg.resource_group_name
-  network_security_group_name = azurerm_network_security_group.spoke2-apim-nsg.name
-  name                        = "AllowAPIMManagementEndpoint"
-  priority                    = 4093
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  source_address_prefix       = "ApiManagement"
-  destination_port_ranges     = ["3443"]
-  destination_address_prefix  = "VirtualNetwork"
-  depends_on                  = [azurerm_network_security_group.spoke2-apim-nsg]
-}
-
-resource "azurerm_network_security_rule" "apim2_nsg_rule2" {
-  resource_group_name         = azurerm_network_security_group.spoke2-apim-nsg.resource_group_name
-  network_security_group_name = azurerm_network_security_group.spoke2-apim-nsg.name
-  name                        = "Allow-All-LoadBalancer-Inbound"
-  priority                    = 4095
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "*"
-  source_port_range           = "*"
-  source_address_prefix       = "AzureLoadBalancer"
-  destination_port_range      = "*"
-  destination_address_prefix  = "VirtualNetwork"
-  depends_on                  = [azurerm_network_security_group.spoke2-apim-nsg]
-}
-
-resource "azurerm_network_security_rule" "apim2_nsg_rule3" {
-  resource_group_name         = azurerm_network_security_group.spoke2-apim-nsg.resource_group_name
-  network_security_group_name = azurerm_network_security_group.spoke2-apim-nsg.name
-  name                        = "Block-All-Traffic"
-  priority                    = 4096
-  direction                   = "Inbound"
-  access                      = "Deny"
-  protocol                    = "*"
-  source_port_range           = "*"
-  source_address_prefix       = "*"
-  destination_port_range      = "*"
-  destination_address_prefix  = "*"
-  depends_on                  = [azurerm_network_security_group.spoke2-apim-nsg]
-}
-
-
 
