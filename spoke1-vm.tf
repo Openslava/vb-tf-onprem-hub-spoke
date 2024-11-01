@@ -4,7 +4,7 @@ data "azurerm_subnet" "spoke1-mgmt" {
   name                 = "mgmt"
   resource_group_name  = azurerm_resource_group.spoke1-rg.name
   virtual_network_name = azurerm_virtual_network.spoke1-vnet.name
-  depends_on = [ azurerm_virtual_network.spoke1-vnet ]
+  depends_on           = [azurerm_virtual_network.spoke1-vnet]
 }
 
 resource "azurerm_network_interface" "spoke1-nic" {

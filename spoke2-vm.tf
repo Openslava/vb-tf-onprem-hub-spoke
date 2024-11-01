@@ -3,7 +3,7 @@ data "azurerm_subnet" "spoke2-mgmt" {
   name                 = "mgmt"
   resource_group_name  = azurerm_resource_group.spoke2-rg.name
   virtual_network_name = azurerm_virtual_network.spoke2-vnet.name
-  depends_on = [ azurerm_virtual_network.spoke2-vnet ]
+  depends_on           = [azurerm_virtual_network.spoke2-vnet]
 }
 
 resource "azurerm_network_interface" "spoke2-nic" {

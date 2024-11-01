@@ -18,7 +18,7 @@ data "azurerm_subnet" "hub-dmz" {
   name                 = "dmz"
   resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  depends_on = [ azurerm_virtual_network.hub-vnet ]
+  depends_on           = [azurerm_virtual_network.hub-vnet]
 }
 
 resource "azurerm_network_interface" "hub-nva-nic" {

@@ -57,7 +57,7 @@ resource "azurerm_virtual_network" "hub-vnet" {
   subnet {
     name             = "GatewaySubnet"
     address_prefixes = ["10.0.255.224/27"]
-    route_table_id = azurerm_route_table.hub-gateway-rt.id
+    route_table_id   = azurerm_route_table.hub-gateway-rt.id
   }
 
   subnet {
@@ -133,7 +133,7 @@ data "azurerm_subnet" "hub-mgmt" {
   name                 = "mgmt"
   resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  depends_on = [ azurerm_virtual_network.hub-vnet ]
+  depends_on           = [azurerm_virtual_network.hub-vnet]
 }
 
 resource "azurerm_network_interface" "hub-nic" {
@@ -215,7 +215,7 @@ data "azurerm_subnet" "hub-gateway-subnet" {
   name                 = "GatewaySubnet"
   resource_group_name  = azurerm_resource_group.hub-rg.name
   virtual_network_name = azurerm_virtual_network.hub-vnet.name
-  depends_on = [ azurerm_virtual_network.hub-vnet ]
+  depends_on           = [azurerm_virtual_network.hub-vnet]
 }
 
 resource "azurerm_virtual_network_gateway" "hub-vnet-gateway" {
