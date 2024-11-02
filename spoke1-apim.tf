@@ -53,14 +53,20 @@ resource "azurerm_api_management" "apim1" {
   }
 }
 
+# --- NSGs ---
+
 resource "azurerm_network_security_group" "spoke1-apim-nsg" {
   name                = "nsg-${local.prefix-spoke1}-apim"
   location            = azurerm_resource_group.spoke1-rg.location
   resource_group_name = azurerm_resource_group.spoke1-rg.name
 
   # https://learn.microsoft.com/en-us/azure/api-management/api-management-using-with-vnet?tabs=stv2#configure-nsg-rules
+  # only inbound trafic is fildered 
+  # default outboud trafic is used instead of specific considerations
+  # -65000 - Allow - Any-Any-Vnet-VNET
+  # -65001 -Allow  - Any-Any-Any-Internet
   security_rule {
-    name                       = "Allow_Inbount_https_VirtualNetwork"
+    name                       = "Allog_Inbound_https"
     priority                   = 900
     direction                  = "Inbound"
     access                     = "Allow"
@@ -84,7 +90,7 @@ resource "azurerm_network_security_group" "spoke1-apim-nsg" {
   }
 
   security_rule {
-    name                       = "Allow_Inbound_Redis_Cache"
+    name                       = "Allow_Inbound_RedisCache"
     priority                   = 1010
     direction                  = "Inbound"
     access                     = "Allow"
@@ -95,140 +101,42 @@ resource "azurerm_network_security_group" "spoke1-apim-nsg" {
     destination_address_prefix = "VirtualNetwork"
   }
 
+
   security_rule {
-    name                       = "Allow_Outbound_Redis_Cache"
+    name                       = "Allow_Inbound_RedisLimit"
     priority                   = 1020
-    direction                  = "Outbound"
+    direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["6381", "6382", "6383"]
+    destination_port_ranges    = ["4290"]
     destination_address_prefix = "VirtualNetwork"
   }
 
   security_rule {
-    name                       = "Allow_Inbound_Redis_Limit"
+    name                       = "Allow_Inbound_AzureLoadBalancer"
     priority                   = 1030
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["4290"]
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_port_ranges    = ["6390"]
     destination_address_prefix = "VirtualNetwork"
   }
 
   security_rule {
-    name                       = "Allow_Outbound_Redis_Limit"
-    priority                   = 1040
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["4290"]
-    destination_address_prefix = "VirtualNetwork"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_Sql"
-    priority                   = 1050
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["1433"]
-    destination_address_prefix = "Sql"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_EventHub"
-    priority                   = 1060
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["5671"]
-    destination_address_prefix = "EventHub"
-  }
-
-  # 445 for git deployment, 443 for table access
-  security_rule {
-    name                       = "Allow_Outbound_Storage"
-    priority                   = 1080
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443", "445"]
-    destination_address_prefix = "Storage"
-  }
-
-
-  security_rule {
-    name                       = "Allow_Inbound_AzureLoadBalancer"
-    priority                   = 1080
+    name                       = "Allog_Inbound_SyncCounters"
+    priority                   = 1140
     direction                  = "Inbound"
     access                     = "Allow"
-    protocol                   = "*"
+    protocol                   = "Udp"
     source_port_range          = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_port_ranges    = ["4290"]
     destination_address_prefix = "VirtualNetwork"
   }
-
-  security_rule {
-    name                       = "Allow_Outbound_AzureMonitor"
-    priority                   = 1090
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443", "1886"]
-    destination_address_prefix = "AzureMonitor"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_AzureKeyVault"
-    priority                   = 1100
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443"]
-    destination_address_prefix = "AzureKeyVault"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_AzureActiveDirectory"
-    priority                   = 1110
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443"]
-    destination_address_prefix = "AzureActiveDirectory"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_VirtualNetwork"
-    priority                   = 1200
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["22", "443"]
-    destination_address_prefix = "VirtualNetwork"
-  }
-
 
   security_rule {
     name                       = "Deny-Any-Inbound"
@@ -241,19 +149,6 @@ resource "azurerm_network_security_group" "spoke1-apim-nsg" {
     destination_port_range     = "*"
     destination_address_prefix = "*"
   }
-
-  security_rule {
-    name                       = "Deny-Any-Outbound"
-    priority                   = 2010
-    direction                  = "Outbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "*"
-    destination_port_range     = "*"
-    destination_address_prefix = "*"
-  }
-
 
   tags = {
     environment = "spoke1"

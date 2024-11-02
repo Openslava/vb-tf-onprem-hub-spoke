@@ -18,16 +18,10 @@ resource "azurerm_route_table" "spoke1-rt" {
   bgp_route_propagation_enabled = false
 
   route {
-    name                   = "toSpoke2"
-    address_prefix         = "10.2.0.0/16"
+    name                   = "default"
+    address_prefix         = "0.0.0.0/0"
     next_hop_type          = "VirtualAppliance"
     next_hop_in_ip_address = "10.0.0.36"
-  }
-
-  route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "VnetLocal"
   }
 
   tags = {
@@ -42,6 +36,13 @@ resource "azurerm_route_table" "spoke1-rt-apim" {
   resource_group_name           = azurerm_resource_group.spoke1-rg.name
   bgp_route_propagation_enabled = false
 
+  #apim specific
+  route {
+    name           = "default-ApiManagement"
+    address_prefix = "ApiManagement"
+    next_hop_type  = "Internet"
+  }
+
   # use service endpoint instead of all 
   route {
     name           = "default-AzureCloud"
@@ -51,10 +52,12 @@ resource "azurerm_route_table" "spoke1-rt-apim" {
 
 
   route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "VnetLocal"
+    name                   = "default"
+    address_prefix         = "0.0.0.0/0"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = "10.0.0.36"
   }
+
 
   tags = {
     environment = local.prefix-hub-nva
@@ -89,8 +92,7 @@ resource "azurerm_virtual_network" "spoke1-vnet" {
     address_prefixes = ["10.1.2.0/26"]
   }
 
-  # https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview
-  # no service endpoints only service tag on subnet
+  # setup apim subnet wihtout service endpoint require routing tables
   subnet {
     name             = "apim"
     address_prefixes = ["10.1.3.0/26"]

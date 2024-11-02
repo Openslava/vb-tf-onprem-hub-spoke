@@ -19,16 +19,10 @@ resource "azurerm_route_table" "spoke2-rt" {
   bgp_route_propagation_enabled = false
 
   route {
-    name                   = "toSpoke1"
-    address_prefix         = "10.1.0.0/16"
-    next_hop_in_ip_address = "10.0.0.36"
+    name                   = "default"
+    address_prefix         = "0.0.0.0/0"
     next_hop_type          = "VirtualAppliance"
-  }
-
-  route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "VnetLocal"
+    next_hop_in_ip_address = "10.0.0.36"
   }
 
   tags = {
@@ -44,6 +38,14 @@ resource "azurerm_route_table" "spoke2-rt-apim" {
   resource_group_name           = azurerm_resource_group.spoke2-rg.name
   bgp_route_propagation_enabled = false
 
+  # default go to appliance 
+  route {
+    name                   = "default"
+    address_prefix         = "0.0.0.0/0"
+    next_hop_type          = "VirtualAppliance"
+    next_hop_in_ip_address = "10.0.0.36"
+  }
+
   route {
     name           = "default-ApiManagement"
     address_prefix = "ApiManagement"
@@ -56,12 +58,6 @@ resource "azurerm_route_table" "spoke2-rt-apim" {
     next_hop_type  = "Internet"
   }
 
-  # local vnet hop 
-  route {
-    name           = "default"
-    address_prefix = "0.0.0.0/0"
-    next_hop_type  = "VnetLocal"
-  }
 
   route {
     name           = "default-Sql"
@@ -128,6 +124,7 @@ resource "azurerm_virtual_network" "spoke2-vnet" {
     route_table_id   = azurerm_route_table.spoke2-rt.id
   }
 
+  # setup apim subnet wihtout service endpoint require routing tables
   subnet {
     name             = "apim"
     address_prefixes = ["10.2.3.0/26"]

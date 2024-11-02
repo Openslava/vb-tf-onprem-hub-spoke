@@ -60,15 +60,20 @@ resource "azurerm_network_security_group" "spoke2-apim-nsg" {
   location            = azurerm_resource_group.spoke2-rg.location
   resource_group_name = azurerm_resource_group.spoke2-rg.name
 
+  # https://learn.microsoft.com/en-us/azure/api-management/api-management-using-with-vnet?tabs=stv2#configure-nsg-rules
+  # only inbound trafic is fildered 
+  # default outboud trafic is used instead of specific considerations
+  # -65000 - Allow - Any-Any-Vnet-VNET
+  # -65001 -Allow  - Any-Any-Any-Internet
   security_rule {
-    name                       = "general-ports"
+    name                       = "Allog_Inbound_https"
     priority                   = 900
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443", "80", "22"]
+    destination_port_ranges    = ["443"]
     destination_address_prefix = "VirtualNetwork"
   }
 
@@ -85,87 +90,51 @@ resource "azurerm_network_security_group" "spoke2-apim-nsg" {
   }
 
   security_rule {
-    name                       = "Allow_Outbound_Sql"
-    priority                   = 1050
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["1433"]
-    destination_address_prefix = "Sql"
-  }
-
-  # 445 for git deployment, 443 for table access
-  security_rule {
-    name                       = "Allow_Outbound_Storage"
-    priority                   = 1070
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443", "445"]
-    destination_address_prefix = "Storage"
-  }
-
-  security_rule {
-    name                       = "Allow_Inbound_AzureLoadBalancer"
-    priority                   = 1080
+    name                       = "Allow_Inbound_RedisCache"
+    priority                   = 1010
     direction                  = "Inbound"
     access                     = "Allow"
-    protocol                   = "*"
+    protocol                   = "Tcp"
     source_port_range          = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_port_ranges    = ["6381", "6382", "6383"]
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+
+  security_rule {
+    name                       = "Allow_Inbound_RedisLimit"
+    priority                   = 1020
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_port_ranges    = ["4290"]
     destination_address_prefix = "VirtualNetwork"
   }
 
   security_rule {
-    name                       = "Allow_Outbound_AzureMonitor"
-    priority                   = 1090
-    direction                  = "Outbound"
+    name                       = "Allow_Inbound_AzureLoadBalancer"
+    priority                   = 1030
+    direction                  = "Inbound"
     access                     = "Allow"
-    protocol                   = "*"
+    protocol                   = "Tcp"
     source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443", "1886"]
-    destination_address_prefix = "AzureMonitor"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_port_ranges    = ["6390"]
+    destination_address_prefix = "VirtualNetwork"
   }
 
   security_rule {
-    name                       = "Allow_Outbound_AzureKeyVault"
-    priority                   = 1100
-    direction                  = "Outbound"
+    name                       = "Allog_Inbound_SyncCounters"
+    priority                   = 1140
+    direction                  = "Inbound"
     access                     = "Allow"
-    protocol                   = "*"
+    protocol                   = "Udp"
     source_port_range          = "*"
     source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443"]
-    destination_address_prefix = "AzureKeyVault"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_AzureActiveDirectory"
-    priority                   = 1110
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["443"]
-    destination_address_prefix = "AzureActiveDirectory"
-  }
-
-  security_rule {
-    name                       = "Allow_Outbound_VirtualNetwork"
-    priority                   = 1200
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "VirtualNetwork"
-    destination_port_ranges    = ["22", "443"]
+    destination_port_ranges    = ["4290"]
     destination_address_prefix = "VirtualNetwork"
   }
 
@@ -173,18 +142,6 @@ resource "azurerm_network_security_group" "spoke2-apim-nsg" {
     name                       = "Deny-Any-Inbound"
     priority                   = 2000
     direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
-    source_port_range          = "*"
-    source_address_prefix      = "*"
-    destination_port_range     = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "Deny-Any-Outbound"
-    priority                   = 2010
-    direction                  = "Outbound"
     access                     = "Deny"
     protocol                   = "*"
     source_port_range          = "*"
